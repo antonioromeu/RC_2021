@@ -1,96 +1,97 @@
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
-#define PORT "58011"
-
-int fd, errcode;
-ssize_t n;
-socklen_t addrlen;
-struct addrinfo hints, *res;
-struct sockaddr_in addr;
-char buffer[128];
-
-int main(void) {
-    fd = socket(AF_INET, SOCK_DGRAM, 0); //UDP socket
-    if (fd == -1) //error
-        exit(1);
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; //IPv4
-    hints.ai_socktype = SOCK_DGRAM; //UDP socket
-
-    errcode = getaddrinfo("tejo.tecnico.ulisboa.pt", "58001", &hints, &res);
-    if (errcode!=0) //error
-        exit(1);
-
-    n = sendto(fd, "Hello!\n", 7, 0, res->ai_addr, res->ai_addrlen);
-    if (n == -1) //error
-        exit(1);
-
-    addrlen = sizeof(addr);
-    n = recvfrom(fd, buffer, 128, 0, (struct sockaddr*) &addr, &addrlen);
-    if (n == -1) //error
-        exit(1);
-    
-    write(1, "echo: ", 6);
-    write(1, buffer, n);
-
-    freeaddrinfo(res);
-    exit(0);
-}
-
-/*
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#define PORT "58011"
+#include <iostream>
 
-int fd, errcode;
-ssize_t n;
-socklen_t addrlen;
-struct addrinfo hints, *res;
-struct sockaddr_in addr;
-char buffer[128];
+#define BUFFER 500
+#define PORT 58001
+#define GN 32
 
-int main(void) {
-    fd = socket(AF_INET,SOCK_STREAM,0); //TCP socket
-    if (fd == -1)
-        exit(1); //Error
+using namespace std;
+
+int main(int argc, char **argv) {
+    struct addrinfo hints, *res;
+    struct sockaddr_in addr, *result, *rp;
+    socklen_t addrlen;
+    int sfd, s, j;
+    size_t len;
+    ssize_t nread, n;
+    char buf[BUFFER];
+    char PDIP[BUFFER], PDport[BUFFER], ASIP[BUFFER], ASport[BUFFER];
+
+    if (argc < 2 || argc > 8) {
+        fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(PDIP, argv[1]);
+    strcpy(PDport, "57032");
+    strcpy(ASIP, "127.0.0.1");
+    strcpy(ASport, "58032");
+
+    for (int i = 2; i < argc; i += 2) {
+        if (!strcmp(argv[i], "-d"))
+            strcpy(PDport, argv[i + 1]);
+        else if (!strcmp(argv[i], "-n"))
+            strcpy(ASIP, argv[i + 1]);
+        else if (!strcmp(argv[i], "-p"))
+            strcpy(ASport, argv[i + 1]);
+    }
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_INET; /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
 
-    errcode = getaddrinfo("tejo.tecnico.ulisboa.pt", PORT, &hints, &res);
-    if (errcode != 0) //Error
+    s = getaddrinfo(ASIP, ASport, &hints, &res);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
+
+    sfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sfd == -1)
         exit(1);
 
-    n = connect(fd, res->ai_addr, res->ai_addrlen);
-    if (n == -1) //Error
+    /*
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sfd == -1)
+            continue;
+
+        if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
+            break;
+
+        close(sfd);
+    }
+
+    if (rp == NULL) {
+        fprintf(stderr, "Could not connect\n");
+        exit(EXIT_FAILURE);
+    }
+    */
+    //freeaddrinfo(result); /* No longer needed */
+
+    for (j = 3; j < argc; j += 2) {
+        len = strlen(argv[j]) + 1; /* +1 for terminating null byte */
+        if (len + 1 > BUFFER) {
+            fprintf(stderr, "Ignoring long message in argument %d\n", j);
+            continue;
+        }
+
+        n = sendto(sfd, argv[j], len, 0, res->ai_addr, res->ai_addrlen);
+        if (n == -1) {
+            fprintf(stderr, "partial/failed write\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    //n = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
+    if (n == -1)
         exit(1);
 
-    n = write(fd, "Hello!\n", 7);
-    if(n == -1) //Error
-        exit(1);
-
-    n = read(fd, buffer, 128);
-    if (n == -1) //Error
-        exit(1);
-
-    write(1, "echo: ", 6);
-    write(1, buffer, n);
-
-    freeaddrinfo(res); 
-    close(fd);
+    exit(EXIT_SUCCESS);
 }
-*/
