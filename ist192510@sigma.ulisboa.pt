@@ -1,13 +1,11 @@
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <iostream>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #define BUFFER 500
 #define GN 32
@@ -16,11 +14,12 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
     struct addrinfo hints, *res;
+    struct addrinfo *result, *rp;
     int sfd, s;
-    struct sockaddr_in addr;
+    struct sockaddr_storage peer_addr;
     socklen_t addrlen;
-    ssize_t n, nread;
-    //struct addrinfo *result, *rp;
+    struct  sockaddr_in addr;
+    ssize_t n;
     char buf[BUFFER], ASport[BUFFER];
     bool verbose = false;
 
@@ -29,7 +28,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    strcpy(ASport, "58032"); 
+    strcpy(ASport, "58032");
+
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp(argv[i], "-p"))
             strcpy(ASport, argv[i + 1]);
@@ -37,18 +37,22 @@ int main(int argc, char *argv[]) {
             verbose = true;
     }
 
-    if ((sfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
-        exit(1);
+    //sfd = socket(AF_INET, SOCK_DGRAM, 0);
+    //if (sfd == -1)
+    //    exit(1);
+    sfd=socket(AF_INET,SOCK_DGRAM,0);
+    if(sfd==-1) /*error*/exit(1);   
 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
 
-    cout << ASport << endl;
-
-    if ((s = getaddrinfo("193.136.138.142", ASport, &hints, &res) != 0))
-        exit(1);
+    s = getaddrinfo("tejo.tecnico.ulisboa.pt", ASport, &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+    }
 
     // for (rp = result; rp != NULL; rp = rp->ai_next) {
     //     sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -58,42 +62,35 @@ int main(int argc, char *argv[]) {
     //     if (bind(sfd, rp->ai_addr, rp->ai_addrlen) != 0)
     //         break;
         
-    //     close(sfd);w
+    //     close(sfd);
     // }
     // if (rp == NULL) { /* No address succeeded */
     //     fprintf(stderr, "Could not bind\n");
     //     exit(EXIT_FAILURE);
     // }
-    n = bind(sfd, res->ai_addr, res->ai_addrlen);
-    if (n == -1) {
-        cout << n << endl;
-        exit(1);
+
+    n= bind (sfd,res->ai_addr, res->ai_addrlen);
+    if(n==-1) {
+        cout << "acabou" << endl;
+        /*error*/ exit(1);
     }
 
-    //freeaddrinfo(res);
+
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    /* Read datagrams and echo them back to sender */
 
     while (1) {
         addrlen = sizeof(addr);
-        nread = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
-        if (nread == -1)
-            exit(1);
-        n = sendto(sfd, buf, nread, 0, (struct sockaddr*) &addr, addrlen);
+        n = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
         if (n == -1)
             exit(1);
-        
-        // n = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
-        // if (n == -1)
-        //     exit(1);
             
-        // write(1, "received: ", 10);
-        // write(1, buf, n);addr*) &addr, &addrlen);
-        // if (n == -1)
-        //     exit(1);
-            
-        // write(1, "received: ", 10);
-        // write(1, buf, n);
+        write(1, "received: ", 10);
+        write(1, buf, n);
         //    cout << "fodeu" << endl;
-        //    continue;
+        //    continue; /* Ignore failed request */
         //}
         //char host[NI_MAXHOST], service[NI_MAXSERV];
 
@@ -101,11 +98,10 @@ int main(int argc, char *argv[]) {
         //if (s == 0)
         //    printf("Received %zd bytes from %s:%s\n", n, host, service);
         //else
-        //    fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
+        //    fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s)); /* escribing an error value for the getaddrinfo() and getnameinfo() functions*/
 
-        // if (sendto(sfd, buf, n, 0, (struct sockaddr *) &addr, addrlen) != n) {
-        //     fprintf(stderr, "Error sending response\n");
-        // }
-        
+        if (sendto(sfd, buf, n, 0, (struct sockaddr *) &addr, addrlen) != n) {
+            fprintf(stderr, "Error sending response\n");
+        }
     }
 }

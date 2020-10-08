@@ -41,20 +41,21 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-p"))
             strcpy(ASport, argv[i + 1]);
     }
+    sfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sfd == -1)
+        exit(1);
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET; /* Allow IPv4 or IPv6 */
     hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-
+    cout << "antes do get" << endl;
     s = getaddrinfo(ASIP, ASport, &hints, &res);
     if (s != 0) {
+        cout << "get" << endl;
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(EXIT_FAILURE);
     }
 
-    sfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sfd == -1)
-        exit(1);
 
     /*
     for (rp = result; rp != NULL; rp = rp->ai_next) {
@@ -75,7 +76,9 @@ int main(int argc, char **argv) {
     */
     //freeaddrinfo(result); /* No longer needed */
 
+    cout << "antes do for" << endl;
     for (j = 3; j < argc; j += 2) {
+        cout << "dentro do";
         len = strlen(argv[j]) + 1; /* +1 for terminating null byte */
         if (len + 1 > BUFFER) {
             fprintf(stderr, "Ignoring long message in argument %d\n", j);
