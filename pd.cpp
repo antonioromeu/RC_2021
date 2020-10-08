@@ -54,22 +54,22 @@ int main(int argc, char **argv) {
     }
 
     for (j = 3; j < argc; j += 2) {
+        cout << argv[j] << endl;
         len = strlen(argv[j]) + 1;
         if (len + 1 > BUFFER) {
             fprintf(stderr, "Ignoring long message in argument %d\n", j);
             continue;
         }
-
         n = sendto(sfd, argv[j], len, 0, res->ai_addr, res->ai_addrlen);
         if (n == -1) {
             fprintf(stderr, "partial/failed write\n");
             exit(EXIT_FAILURE);
         }
     }
-
-    //n = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
-    if (n == -1)
-        exit(1);
-
+   //n = recvfrom(sfd, buf, BUFFER, 0, res->ai_addr, res->ai_addrlen);
+    //if (n == -1)
+    //    exit(1);
+    //cout << buf << endl;
+    close(sfd);
     exit(EXIT_SUCCESS);
 }

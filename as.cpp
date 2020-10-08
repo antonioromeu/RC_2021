@@ -20,7 +20,6 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in addr;
     socklen_t addrlen;
     ssize_t n, nread;
-    //struct addrinfo *result, *rp;
     char buf[BUFFER], ASport[BUFFER];
     bool verbose = false;
 
@@ -49,46 +48,18 @@ int main(int argc, char *argv[]) {
         exit(1);
 
     n = bind(sfd, res->ai_addr, res->ai_addrlen);
-    if (n == -1) {
-        cout << n << endl;
+    if (n == -1)
         exit(1);
-    }
 
     while (1) {
         addrlen = sizeof(addr);
         nread = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
+        buf[nread] = '\0';
         if (nread == -1)
             exit(1);
         cout << buf << endl;
-        n = sendto(sfd, buf, nread, 0, (struct sockaddr*) &addr, addrlen);
-        if (n == -1)
-            exit(1);
-        
-        // n = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
-        // if (n == -1)
-        //     exit(1);
-            
-        // write(1, "received: ", 10);
-        // write(1, buf, n);addr*) &addr, &addrlen);
-        // if (n == -1)
-        //     exit(1);
-            
-        // write(1, "received: ", 10);
-        // write(1, buf, n);
-        //    cout << "fodeu" << endl;
-        //    continue;
-        //}
-        //char host[NI_MAXHOST], service[NI_MAXSERV];
-
-        //s = getnameinfo((struct sockaddr *) &addr, addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV);
-        //if (s == 0)
-        //    printf("Received %zd bytes from %s:%s\n", n, host, service);
-        //else
-        //    fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
-
-        // if (sendto(sfd, buf, n, 0, (struct sockaddr *) &addr, addrlen) != n) {
-        //     fprintf(stderr, "Error sending response\n");
-        // }
-        
+        //n = sendto(sfd, buf, nread, 0, (struct sockaddr*) &addr, addrlen);
+        //if (n == -1)
+        //    exit(1);
     }
 }
