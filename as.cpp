@@ -45,38 +45,21 @@ int main(int argc, char *argv[]) {
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
 
-    cout << ASport << endl;
-
-    if ((s = getaddrinfo("193.136.138.142", ASport, &hints, &res) != 0))
+    if ((s = getaddrinfo(NULL, ASport, &hints, &res) != 0))
         exit(1);
 
-    // for (rp = result; rp != NULL; rp = rp->ai_next) {
-    //     sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    //     if (sfd == -1)
-    //         continue;
-        
-    //     if (bind(sfd, rp->ai_addr, rp->ai_addrlen) != 0)
-    //         break;
-        
-    //     close(sfd);w
-    // }
-    // if (rp == NULL) { /* No address succeeded */
-    //     fprintf(stderr, "Could not bind\n");
-    //     exit(EXIT_FAILURE);
-    // }
     n = bind(sfd, res->ai_addr, res->ai_addrlen);
     if (n == -1) {
         cout << n << endl;
         exit(1);
     }
 
-    //freeaddrinfo(res);
-
     while (1) {
         addrlen = sizeof(addr);
         nread = recvfrom(sfd, buf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
         if (nread == -1)
             exit(1);
+        cout << buf << endl;
         n = sendto(sfd, buf, nread, 0, (struct sockaddr*) &addr, addrlen);
         if (n == -1)
             exit(1);

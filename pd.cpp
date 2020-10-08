@@ -8,14 +8,12 @@
 #include <iostream>
 
 #define BUFFER 500
-#define PORT 58001
 #define GN 32
 
 using namespace std;
 
 int main(int argc, char **argv) {
     struct addrinfo hints, *res;
-    struct sockaddr_in addr, *result, *rp;
     socklen_t addrlen;
     int sfd, s, j;
     size_t len;
@@ -46,40 +44,17 @@ int main(int argc, char **argv) {
         exit(1);
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-    cout << "antes do get" << endl;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+
     s = getaddrinfo(ASIP, ASport, &hints, &res);
     if (s != 0) {
-        cout << "get" << endl;
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(EXIT_FAILURE);
     }
 
-
-    /*
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sfd == -1)
-            continue;
-
-        if (connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1)
-            break;
-
-        close(sfd);
-    }
-
-    if (rp == NULL) {
-        fprintf(stderr, "Could not connect\n");
-        exit(EXIT_FAILURE);
-    }
-    */
-    //freeaddrinfo(result); /* No longer needed */
-
-    cout << "antes do for" << endl;
     for (j = 3; j < argc; j += 2) {
-        cout << "dentro do";
-        len = strlen(argv[j]) + 1; /* +1 for terminating null byte */
+        len = strlen(argv[j]) + 1;
         if (len + 1 > BUFFER) {
             fprintf(stderr, "Ignoring long message in argument %d\n", j);
             continue;
