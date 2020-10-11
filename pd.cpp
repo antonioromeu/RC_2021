@@ -6,31 +6,30 @@
 #include <unistd.h>
 #include <string.h>
 #include <iostream>
+#include <ctype.h>
 
 #define BUFFER 500
 #define GN 32
 
 using namespace std;
 
-int main(int argc, char **argv) {
-    struct addrinfo hints, *res;
-    socklen_t addrlen;
-    int sfd, s, j;
-    size_t len;
-    ssize_t nread, n;
-    char buf[BUFFER];
-    char PDIP[BUFFER], PDport[BUFFER], ASIP[BUFFER], ASport[BUFFER];
+char PDIP[50] = "";
+char PDport[6]= "57032";
+char ASIP[50] = "localhost";
+char ASport[6] = "58032";
+char command[5] = "";
+char UID[6] = "";
+char pass[9] = "";
 
+struct addrinfo hints, *res;
+
+void parseArgs(int argc, char *argv[]){
+    int n = argc, i = 1;
     if (argc < 2 || argc > 8) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-
     strcpy(PDIP, argv[1]);
-    strcpy(PDport, "57032");
-    strcpy(ASIP, "127.0.0.1");
-    strcpy(ASport, "58032");
-
     for (int i = 2; i < argc; i += 2) {
         if (!strcmp(argv[i], "-d"))
             strcpy(PDport, argv[i + 1]);
@@ -39,6 +38,38 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-p"))
             strcpy(ASport, argv[i + 1]);
     }
+}
+
+bool isNumeric(string str) {
+    for (int i = 0; i < str.length(); i++)
+        if (isdigit(str[i]) == false)
+            return false;
+    return true;
+}
+
+bool isAlphanumeric(string str) {
+    for (int i = 0; i < str.length(); i++)
+        if (isalnum(str[i]) == false)
+            return false;
+    return true;
+}
+
+void sendToServer(int sfd, string buf) {
+    if (sendto(sfd, &buf, buf.length(), 0, res->ai_addr, res->ai_addrlen) == -1) {
+        fprintf(stderr, "partial/failed write\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int main(int argc, char **argv) {
+    socklen_t addrlen;
+    int sfd, s, j;
+    size_t len;
+    ssize_t nread, n;
+    char buf[BUFFER];
+    
+    parseArgs(argc, argv);
+    
     sfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sfd == -1)
         exit(1);
@@ -53,20 +84,31 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    for (j = 3; j < argc; j += 2) {
-        cout << argv[j] << endl;
-        len = strlen(argv[j]) + 1;
-        if (len + 1 > BUFFER) {
-            fprintf(stderr, "Ignoring long message in argument %d\n", j);
-            continue;
-        }
-        n = sendto(sfd, argv[j], len, 0, res->ai_addr, res->ai_addrlen);
-        if (n == -1) {
-            fprintf(stderr, "partial/failed write\n");
+    while (1) {
+        char str[50];
+        cin.getline(str, 50);
+        if (!strcmp(str, "exit"))
+            exit(1);
+        sscanf(str, "%s %s %s", command, UID, pass);
+        
+        if (strlen(UID) != 5 || !isNumeric(UID)) {
+            perror("UID Error");
             exit(EXIT_FAILURE);
         }
+
+        if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
+             perror ("Pass Error");
+            exit(EXIT_FAILURE);
+        }
+        
+        const char *args[4] = {UID, pass, PDIP, PDport}; 
+        
+        for (int i = 0; i < 4; i++) {
+            cout << args[i] << endl;
+            sendToServer(sfd, args[i]);
+        }
     }
-   //n = recvfrom(sfd, buf, BUFFER, 0, res->ai_addr, res->ai_addrlen);
+    //n = recvfrom(sfd, buf, BUFFER, 0, res->ai_addr, res->ai_addrlen);
     //if (n == -1)
     //    exit(1);
     //cout << buf << endl;
