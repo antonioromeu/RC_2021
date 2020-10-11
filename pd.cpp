@@ -7,12 +7,18 @@
 #include <string.h>
 #include <iostream>
 #include <ctype.h>
+#include <arpa/inet.h>
 
 #define BUFFER 500
 #define GN 32
 
 using namespace std;
 
+socklen_t addrlen;
+int sfd, s, j;
+size_t len;
+ssize_t nread, n;
+char buffer[BUFFER] = "";
 char PDIP[50] = "";
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
@@ -24,7 +30,6 @@ char pass[9] = "";
 struct addrinfo hints, *res;
 
 void parseArgs(int argc, char *argv[]){
-    int n = argc, i = 1;
     if (argc < 2 || argc > 8) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -57,17 +62,12 @@ bool isAlphanumeric(string str) {
 void sendToServer(int sfd, string buf) {
     if (sendto(sfd, &buf, buf.length(), 0, res->ai_addr, res->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
+        close(sfd); 
         exit(EXIT_FAILURE);
     }
 }
 
 int main(int argc, char **argv) {
-    socklen_t addrlen;
-    int sfd, s, j;
-    size_t len;
-    ssize_t nread, n;
-    char buf[BUFFER];
-    
     parseArgs(argc, argv);
     
     sfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -81,23 +81,34 @@ int main(int argc, char **argv) {
     s = getaddrinfo(ASIP, ASport, &hints, &res);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(sfd); 
         exit(EXIT_FAILURE);
     }
 
     while (1) {
         char str[50];
         cin.getline(str, 50);
-        if (!strcmp(str, "exit"))
-            exit(1);
+        if (!strcmp(str, "exit")) { 
+            close(sfd); 
+            exit(EXIT_SUCCESS);
+        }
         sscanf(str, "%s %s %s", command, UID, pass);
+
+        if (strcmp(command, "reg")) {
+            perror("Command is not reg");
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
         
-        if (strlen(UID) != 5 || !isNumeric(UID)) {
+        if (strlen(UID) != 5 || !isNumeric(UID)) {  
             perror("UID Error");
+            close(sfd);
             exit(EXIT_FAILURE);
         }
 
         if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
-             perror ("Pass Error");
+            perror ("Pass Error");
+            close(sfd); 
             exit(EXIT_FAILURE);
         }
         

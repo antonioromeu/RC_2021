@@ -7,6 +7,7 @@
 #include <string.h>
 #include <iostream>
 #include <ctype.h>
+#include <arpa/inet.h>
 
 #define BUFFER 500
 #define GN 32
@@ -18,9 +19,7 @@ ssize_t n;
 socklen_t addrlen;
 struct addrinfo hints, *res;
 struct sockaddr_in addr;
-char buffer[128];
-
-
+char buffer[128] = "";
 char ASIP[50] = "localhost";
 char ASport[6] = "58032";
 char FSIP[50] = "localhost";
@@ -28,14 +27,17 @@ char FSport[6]= "59032";
 char command[5] = "";
 char UID[6] = "";
 char pass[9] = "";
+char Fop[] = "";
+char Fname[] = "";
+char VC[] = "";
+char filename = "";
 
 void parseArgs(int argc, char *argv[]){
-    int n = argc, i = 1;
     if (argc < 1 || argc > 9) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    for (int i = 2; i < argc; i += 2) {
+    for (int i = 1; i < argc; i += 2) {
         if (!strcmp(argv[i], "-n"))
             strcpy(ASIP, argv[i + 1]);
         else if (!strcmp(argv[i], "-p"))
@@ -47,11 +49,52 @@ void parseArgs(int argc, char *argv[]){
     }
 }
 
+bool isNumeric(string str) {
+    for (int i = 0; i < str.length(); i++)
+        if (isdigit(str[i]) == false)
+            return false;
+    return true;
+}
+
+bool isAlphanumeric(string str) {
+    for (int i = 0; i < str.length(); i++)
+        if (isalnum(str[i]) == false)
+            return false;
+    return true;
+}
+
+bool checkUID(string str) {
+    if (strlen(str) != 5 || !isNumeric(str)) {  
+        perror("UID Error");
+        close(sfd);
+        return false;
+    }
+    return true;
+}
+
+bool checkPass(string str) {
+    if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
+        perror ("Pass Error");
+        close(sfd);
+        return false;
+    }
+    return true;
+}
+
+void sendToServer(int sfd, string buf) {
+    if (sendto(sfd, &buf, buf.length(), 0, res->ai_addr, res->ai_addrlen) == -1) {
+        fprintf(stderr, "partial/failed write\n");
+        close(sfd); 
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char **argv) {
+    parseArgs(argc, argv);
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1) 
-        exit(1);
+        exit(EXIT_FAILURE);
     
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
@@ -63,10 +106,66 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    if (connect(fd, res->ai_addr, res->ai_addrlen) == -1)
-        exit(1);
+    if (connect(fd, res->ai_addr, res->ai_addrlen) == -1) {
+        perror("Nao conectou");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+    
+    while (1) {
+        char str[50];
+        cin.getline(str, 50);
+        if (!strcmp(str, "exit")) {
+            close(sfd); 
+            exit(EXIT_FAILURE);
+        }
+    
+        sscanf(str, "%s ", command);
+        switch (command) {
+            case 'login':
+                sscanf(str, "%s %s %s", command, UID, pass);
+                if (!checkUID(UID))
+                    exit(EXIT_FAILURE);
+                if (!checkPass(pass))
+                    exit(EXIT_FAILURE);
+                sendToServer(fd, UID);
+                sendToServer(fd, pass);
+                break;
+            case 'req':
+            case 'val':
+            case 'list':
+            case 'l-':
+            case 'retrieve':
+            case 'r':
+            case 'upload':
+            case 'u':
+            case 'delete':
+            case 'd':
+            case 'remove':
+            case 'x':
+            case 'exit':
+        }
+        
+        if (strlen(UID) != 5 || !isNumeric(UID)) {
+            perror("UID Error");
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
 
-    cout << "conectou" << endl;
+        if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
+            perror ("Pass Error");
+            close(sfd); 
+            exit(EXIT_FAILURE);
+        }
+        
+        const char *args[4] = {UID, pass, PDIP, PDport}; 
+        
+        for (int i = 0; i < 4; i++) {
+            cout << args[i] << endl;
+            sendToServer(sfd, args[i]);
+        }
+    }
+
     /*
     n = write(fd, "Hello!\n", 7);
     if(n == -1)
@@ -80,6 +179,6 @@ int main(int argc, char **argv) {
     write(1, buffer, n);
     */
 
-    freeaddrinfo(res);
-    close(fd);
+    // freeaddrinfo(res);
+    // close(fd);
 }
