@@ -8,6 +8,8 @@
 #include <iostream>
 #include <ctype.h>
 #include <arpa/inet.h>
+#include <string>
+#include <map>
 
 #define BUFFER 500
 #define GN 32
@@ -15,10 +17,13 @@
 using namespace std;
 
 socklen_t addrlen;
+struct addrinfo hints, *res;
+struct sockaddr_in addr;
 int sfd, s, j;
 size_t len;
 ssize_t nread, n;
-char buffer[BUFFER] = "";
+char senderBuf[500] = "";
+char receiverBuf[500] = "";
 char PDIP[50] = "";
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
@@ -26,10 +31,9 @@ char ASport[6] = "58032";
 char command[5] = "";
 char UID[6] = "";
 char pass[9] = "";
+map<const char*, int> commands;
 
-struct addrinfo hints, *res;
-
-void parseArgs(int argc, char *argv[]){
+void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -45,26 +49,51 @@ void parseArgs(int argc, char *argv[]){
     }
 }
 
-bool isNumeric(string str) {
-    for (int i = 0; i < str.length(); i++)
+bool isNumeric(char *str) {
+    for (int i = 0; i < strlen(str); i++)
         if (isdigit(str[i]) == false)
             return false;
     return true;
 }
 
-bool isAlphanumeric(string str) {
-    for (int i = 0; i < str.length(); i++)
+bool isAlphanumeric(char *str) {
+    for (int i = 0; i < strlen(str); i++)
         if (isalnum(str[i]) == false)
             return false;
     return true;
 }
 
-void sendToServer(int sfd, string buf) {
-    if (sendto(sfd, &buf, buf.length(), 0, res->ai_addr, res->ai_addrlen) == -1) {
+bool checkUID(char *str) {
+    if (strlen(str) != 5 || !isNumeric(str)) {  
+        perror("UID Error");
+        close(sfd);
+        return false;
+    }
+    return true;
+}
+
+bool checkPass(char *str) {
+    if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
+        perror ("Pass Error");
+        close(sfd);
+        return false;
+    }
+    return true;
+}
+
+void sendToServer(int sfd, char *buf) {
+    if (sendto(sfd, buf, strlen(buf), 0, res->ai_addr, res->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
+}
+
+char* createString(const char **args, int len) {
+    for (int i = 0; i < len; i++) {
+        strcat(senderBuf, args[i]);
+    }
+    return senderBuf;
 }
 
 int main(int argc, char **argv) {
@@ -88,41 +117,35 @@ int main(int argc, char **argv) {
     while (1) {
         char str[50];
         cin.getline(str, 50);
-        if (!strcmp(str, "exit")) { 
-            close(sfd); 
-            exit(EXIT_SUCCESS);
+        commands = {{"exit", 0}, {"reg", 1}};
+        sscanf(str, "%s ", command);
+        cout << commands.find(command) << endl;
+        int code = (int) commands.find(command);
+        switch (code) {
+            case 0:
+                sendToServer(sfd, createString("UNR", UID, pass));
+                close(sfd);
+                break;
+            case 1:
+                sscanf(str, "%s %s %s", command, UID, pass);
+                if (!checkUID(UID))
+                    exit(EXIT_FAILURE);
+                if (!checkPass(pass))
+                    exit(EXIT_FAILURE);
+                sendToServer(sfd, createString(["REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"], 10));
+                break;
+            default:
+                exit(1);
         }
-        sscanf(str, "%s %s %s", command, UID, pass);
 
-        if (strcmp(command, "reg")) {
-            perror("Command is not reg");
-            close(sfd);
-            exit(EXIT_FAILURE);
-        }
-        
-        if (strlen(UID) != 5 || !isNumeric(UID)) {  
-            perror("UID Error");
-            close(sfd);
-            exit(EXIT_FAILURE);
-        }
+        cout << senderBuf << endl;
+        sendToServer(sfd, senderBuf);
 
-        if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
-            perror ("Pass Error");
-            close(sfd); 
-            exit(EXIT_FAILURE);
-        }
-        
-        const char *args[4] = {UID, pass, PDIP, PDport}; 
-        
-        for (int i = 0; i < 4; i++) {
-            cout << args[i] << endl;
-            sendToServer(sfd, args[i]);
-        }
+        addrlen = sizeof(addr);
+        if (recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen) == -1)
+            exit(1);
+        cout << receiverBuf;
     }
-    //n = recvfrom(sfd, buf, BUFFER, 0, res->ai_addr, res->ai_addrlen);
-    //if (n == -1)
-    //    exit(1);
-    //cout << buf << endl;
     close(sfd);
     exit(EXIT_SUCCESS);
 }

@@ -146,18 +146,6 @@ int main(int argc, char **argv) {
             case 'exit':
         }
         
-        if (strlen(UID) != 5 || !isNumeric(UID)) {
-            perror("UID Error");
-            close(sfd);
-            exit(EXIT_FAILURE);
-        }
-
-        if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
-            perror ("Pass Error");
-            close(sfd); 
-            exit(EXIT_FAILURE);
-        }
-        
         const char *args[4] = {UID, pass, PDIP, PDport}; 
         
         for (int i = 0; i < 4; i++) {
