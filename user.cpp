@@ -49,21 +49,21 @@ void parseArgs(int argc, char *argv[]){
     }
 }
 
-bool isNumeric(string str) {
+bool isNumeric(char *str) {
     for (int i = 0; i < str.length(); i++)
         if (isdigit(str[i]) == false)
             return false;
     return true;
 }
 
-bool isAlphanumeric(string str) {
+bool isAlphanumeric(char *str) {
     for (int i = 0; i < str.length(); i++)
         if (isalnum(str[i]) == false)
             return false;
     return true;
 }
 
-bool checkUID(string str) {
+bool checkUID(char *str) {
     if (strlen(str) != 5 || !isNumeric(str)) {  
         perror("UID Error");
         close(sfd);
@@ -72,7 +72,7 @@ bool checkUID(string str) {
     return true;
 }
 
-bool checkPass(string str) {
+bool checkPass(char *str) {
     if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
         perror ("Pass Error");
         close(sfd);
@@ -81,7 +81,7 @@ bool checkPass(string str) {
     return true;
 }
 
-void sendToServer(int sfd, string buf) {
+void sendToServer(int sfd, char *buf) {
     if (sendto(sfd, &buf, buf.length(), 0, res->ai_addr, res->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(sfd); 
@@ -115,22 +115,56 @@ int main(int argc, char **argv) {
     while (1) {
         char str[50];
         cin.getline(str, 50);
-        if (!strcmp(str, "exit")) {
-            close(sfd); 
-            exit(EXIT_FAILURE);
+        if (!strcmp(command, "exit")) {
+
         }
-    
+        else if (!strcmp(command, "login")) {
+            sscanf(str, "%s %s %s", command, UID, pass);
+            if (!checkUID(UID))
+                exit(EXIT_FAILURE);
+            if (!checkPass(pass))
+                exit(EXIT_FAILURE);
+            sendToServer(fd, UID);
+            sendToServer(fd, pass);
+        }
+        else if (!strcmp(command, "req")) {
+            
+        }
+        else if (!strcmp(command, "val")) {
+            
+        }
+        else if (!strcmp(command, "list")) {
+            
+        }
+        else if (!strcmp(command, "l-")) {
+            
+        }
+        else if (!strcmp(command, "retrieve")) {
+            
+        }
+        else if (!strcmp(command, "r")) {
+            
+        }
+        else if (!strcmp(command, "upload")) {
+            
+        }
+        else if (!strcmp(command, "u")) {
+            
+        }
+        else if (!strcmp(command, "delete")) {
+            
+        }
+        else if (!strcmp(command, "d")) {
+            
+        }
+        else if (!strcmp(command, "remove")) {
+            
+        }
+        else if (!strcmp(command, "x")) {
+            
+        }
         sscanf(str, "%s ", command);
         switch (command) {
-            case 'login':
-                sscanf(str, "%s %s %s", command, UID, pass);
-                if (!checkUID(UID))
-                    exit(EXIT_FAILURE);
-                if (!checkPass(pass))
-                    exit(EXIT_FAILURE);
-                sendToServer(fd, UID);
-                sendToServer(fd, pass);
-                break;
             case 'req':
             case 'val':
             case 'list':
@@ -167,6 +201,6 @@ int main(int argc, char **argv) {
     write(1, buffer, n);
     */
 
-    // freeaddrinfo(res);
-    // close(fd);
+    //freeaddrinfo(res);
+    close(fd);
 }

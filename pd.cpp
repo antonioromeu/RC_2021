@@ -9,7 +9,6 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <string>
-#include <map>
 
 #define BUFFER 500
 #define GN 32
@@ -31,7 +30,6 @@ char ASport[6] = "58032";
 char command[5] = "";
 char UID[6] = "";
 char pass[9] = "";
-map<const char*, int> commands;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
@@ -114,38 +112,30 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
+    addrlen = sizeof(addr);
     while (1) {
         char str[50];
         cin.getline(str, 50);
-        commands = {{"exit", 0}, {"reg", 1}};
         sscanf(str, "%s ", command);
-        cout << commands.find(command) << endl;
-        int code = (int) commands.find(command);
-        switch (code) {
-            case 0:
-                sendToServer(sfd, createString("UNR", UID, pass));
-                close(sfd);
-                break;
-            case 1:
-                sscanf(str, "%s %s %s", command, UID, pass);
-                if (!checkUID(UID))
-                    exit(EXIT_FAILURE);
-                if (!checkPass(pass))
-                    exit(EXIT_FAILURE);
-                sendToServer(sfd, createString(["REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"], 10));
-                break;
-            default:
-                exit(1);
+        if (!strcmp(command, "exit")) {
+            const char *args[3] = {"UNR", UID, pass};
+            sendToServer(sfd, createString(args, 3));
+            break;
         }
-
-        cout << senderBuf << endl;
-        sendToServer(sfd, senderBuf);
-
-        addrlen = sizeof(addr);
+        else if (!strcmp(command, "reg")) {
+            sscanf(str, "%s %s %s", command, UID, pass);
+            if (!checkUID(UID))
+                exit(EXIT_FAILURE);
+            if (!checkPass(pass))
+                exit(EXIT_FAILURE);
+            const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+            sendToServer(sfd, createString(args, 10));
+        }
         if (recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen) == -1)
-            exit(1);
+            exit(EXIT_FAILURE);
         cout << receiverBuf;
     }
+
     close(sfd);
     exit(EXIT_SUCCESS);
 }
