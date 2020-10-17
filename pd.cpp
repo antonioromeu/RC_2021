@@ -1,35 +1,4 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <iostream>
-#include <ctype.h>
-#include <arpa/inet.h>
-#include <string>
-
-#define BUFFER 500
-#define GN 32
-
-using namespace std;
-
-socklen_t addrlen;
-struct addrinfo hints, *res;
-struct sockaddr_in addr;
-int sfd, s, j;
-size_t len;
-ssize_t nread, n;
-char senderBuf[500] = "";
-char receiverBuf[500] = "";
-char PDIP[50] = "";
-char PDport[6]= "57032";
-char ASIP[50] = "localhost";
-char ASport[6] = "58032";
-char command[5] = "";
-char UID[6] = "";
-char pass[9] = "";
+#include "aux.h"
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
@@ -47,51 +16,47 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
-bool isNumeric(char *str) {
-    for (int i = 0; i < strlen(str); i++)
-        if (isdigit(str[i]) == false)
-            return false;
-    return true;
-}
-
-bool isAlphanumeric(char *str) {
-    for (int i = 0; i < strlen(str); i++)
-        if (isalnum(str[i]) == false)
-            return false;
-    return true;
-}
-
-bool checkUID(char *str) {
-    if (strlen(str) != 5 || !isNumeric(str)) {  
-        perror("UID Error");
-        close(sfd);
-        return false;
-    }
-    return true;
-}
-
-bool checkPass(char *str) {
-    if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
-        perror ("Pass Error");
-        close(sfd);
-        return false;
-    }
-    return true;
-}
-
 void sendToServer(int sfd, char *buf) {
     if (sendto(sfd, buf, strlen(buf), 0, res->ai_addr, res->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
+    cout << buf << endl;
+    strcpy(buf, "\0");
 }
 
-char* createString(const char **args, int len) {
-    for (int i = 0; i < len; i++) {
-        strcat(senderBuf, args[i]);
+void receiveFromServer(int sfd, char *buf) {
+    if (recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen) == -1) {
+        fprintf(stderr, "partial/failed write\n");
+        close(sfd); 
+        exit(EXIT_FAILURE);
     }
-    return senderBuf;
+    cout << buf << endl;
+    strcpy(buf, "\0");
+}
+
+void processCommands() {
+    addrlen = sizeof(addr);
+    while (1) {
+        fgets(str, 50, stdin);
+        sscanf(str, "%s ", command);
+        if (!strcmp(command, "exit")) {
+            const char *args[5] = {"UNR", " ", UID, " ", pass};
+            sendToServer(sfd, createString(args, 5));
+            close(sfd);
+            exit(EXIT_SUCCESS);
+            break;
+        }
+        else if (!strcmp(command, "reg")) {
+            sscanf(str, "%s %s %s", command, UID, pass);
+            if (!checkUID(UID) || !checkPass(pass))
+                exit(EXIT_FAILURE);
+            const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+            sendToServer(sfd, createString(args, 10));
+        }
+        receiveFromServer(sfd, receiverBuf);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -101,6 +66,9 @@ int main(int argc, char **argv) {
     if (sfd == -1)
         exit(1);
 
+    FD_ZERO(&inputs);
+    FD_SET(0, &inputs);
+    //state = idle;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -108,34 +76,65 @@ int main(int argc, char **argv) {
     s = getaddrinfo(ASIP, ASport, &hints, &res);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        close(sfd); 
+        close(sfd);
         exit(EXIT_FAILURE);
     }
 
-    addrlen = sizeof(addr);
     while (1) {
-        char str[50];
-        cin.getline(str, 50);
-        sscanf(str, "%s ", command);
-        if (!strcmp(command, "exit")) {
-            const char *args[3] = {"UNR", UID, pass};
-            sendToServer(sfd, createString(args, 3));
-            break;
+        testfds = inputs;
+        timeout.tv_sec = 10;
+        timeout.tv_usec = 0;
+        out_fds = select(FD_SETSIZE, &testfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        switch (out_fds) {
+            case 0:
+                printf("Timeout event\n");
+                break;
+            case -1:
+                perror("Select");
+                exit(1);
+            default:
+                if (FD_ISSET(0, &testfds))
+                    processCommands();
         }
-        else if (!strcmp(command, "reg")) {
-            sscanf(str, "%s %s %s", command, UID, pass);
-            if (!checkUID(UID))
-                exit(EXIT_FAILURE);
-            if (!checkPass(pass))
-                exit(EXIT_FAILURE);
-            const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-            sendToServer(sfd, createString(args, 10));
-        }
-        if (recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen) == -1)
-            exit(EXIT_FAILURE);
-        cout << receiverBuf;
     }
-
-    close(sfd);
-    exit(EXIT_SUCCESS);
 }
+        /*
+        FD_ZERO(&rfds);
+        FD_SET(sfd, &rfds);
+        maxfd = sfd;
+            cout << maxfd << endl;
+
+        if (state == busy){
+            FD_SET(afd, &rfds);
+            maxfd = max(maxfd, afd);
+            cout << afd << endl;
+        }
+        counter = select(maxfd + 1, &rfds, (fd_set*) NULL, (fd_set*) NULL, (struct timeval*) NULL);
+        cout << counter << endl;
+        if (counter <= 0)
+            exit(1);
+        if (FD_ISSET(sfd, &rfds)) {
+            addrlen = sizeof(addr);
+            if ((newfd = accept(sfd, (struct sockaddr*) &addr, &addrlen)) == -1)
+                exit(1);
+            switch (state) {
+                case idle:
+                    afd = newfd;
+                    state = busy;
+                    break;
+                case busy:
+                    close(newfd);
+                    break;
+            }
+        }
+        if (FD_ISSET(afd, &rfds)) {
+            if ((n = read(afd, receiverBuf, 128)) != 0) {
+                if (n == -1)
+                    exit(1);
+            }
+            else {
+                close(afd);
+                state = idle;
+            }
+        }
+        */
