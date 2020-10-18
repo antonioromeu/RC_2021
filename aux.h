@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +26,7 @@ struct sockaddr_in addr;
 struct timeval timeout;
 size_t len;
 ssize_t nread, n;
-fd_set inputs, testfds;
+fd_set inputs, testfds, rfds, wfds;
 enum {idle, busy} state;
 int i, out_fds, sfd, s, errocode, j, newfd, afd = 0, maxfd, counter;
 char str[128];
@@ -48,14 +49,14 @@ char VC[1] = "";
 char filename[1] = "";
 
 bool isNumeric(char *str) {
-    for (int i = 0; i < strlen(str); i++)
+    for (int i = 0; i < (int) strlen(str); i++)
         if (isdigit(str[i]) == false)
             return false;
     return true;
 }
 
 bool isAlphanumeric(char *str) {
-    for (int i = 0; i < strlen(str); i++)
+    for (int i = 0; i < (int) strlen(str); i++)
         if (isalnum(str[i]) == false)
             return false;
     return true;

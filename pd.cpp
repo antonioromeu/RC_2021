@@ -26,17 +26,19 @@ void sendToServer(int sfd, char *buf) {
     strcpy(buf, "\0");
 }
 
-void receiveFromServer(int sfd, char *buf) {
-    if (recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen) == -1) {
+int receiveFromServer(int sfd) {
+    int n = recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
+    if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
-    strcpy(buf, "\0");
+    cout << receiverBuf << endl;
+    strcpy(receiverBuf, "\0");
+    return n;
 }
 
-void processCommands() {
+void sendCommands() {
     addrlen = sizeof(addr);
     while (1) {
         fgets(str, 50, stdin);
@@ -50,12 +52,14 @@ void processCommands() {
         }
         else if (!strcmp(command, "reg")) {
             sscanf(str, "%s %s %s", command, UID, pass);
-            if (!checkUID(UID) || !checkPass(pass))
+            if (!checkUID(UID) || !checkPass(pass)) {
+                close(sfd);
                 exit(EXIT_FAILURE);
+            }
             const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
             sendToServer(sfd, createString(args, 10));
         }
-        receiveFromServer(sfd, receiverBuf);
+        receiveFromServer(sfd);
     }
 }
 
@@ -66,9 +70,7 @@ int main(int argc, char **argv) {
     if (sfd == -1)
         exit(1);
 
-    FD_ZERO(&inputs);
-    FD_SET(0, &inputs);
-    //state = idle;
+    state = idle;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -79,62 +81,49 @@ int main(int argc, char **argv) {
         close(sfd);
         exit(EXIT_FAILURE);
     }
-
     while (1) {
-        testfds = inputs;
-        timeout.tv_sec = 10;
+        timeout.tv_sec = 120;
         timeout.tv_usec = 0;
-        out_fds = select(FD_SETSIZE, &testfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
-        switch (out_fds) {
-            case 0:
-                printf("Timeout event\n");
-                break;
-            case -1:
-                perror("Select");
-                exit(1);
-            default:
-                if (FD_ISSET(0, &testfds))
-                    processCommands();
-        }
-    }
-}
-        /*
+        // clear descriptor 
         FD_ZERO(&rfds);
-        FD_SET(sfd, &rfds);
-        maxfd = sfd;
-            cout << maxfd << endl;
+        FD_ZERO(&wfds);
+        FD_SET(sfd, &wfds);
 
-        if (state == busy){
-            FD_SET(afd, &rfds);
+        maxfd = sfd;
+        if (state == busy) {
+            //FD_SET(afd, &wfds);
             maxfd = max(maxfd, afd);
-            cout << afd << endl;
         }
-        counter = select(maxfd + 1, &rfds, (fd_set*) NULL, (fd_set*) NULL, (struct timeval*) NULL);
-        cout << counter << endl;
+
+        counter = select(maxfd + 1, &rfds, &wfds, NULL, &timeout);
         if (counter <= 0)
-            exit(1);
-        if (FD_ISSET(sfd, &rfds)) {
+            exit(EXIT_FAILURE);
+
+        if (FD_ISSET(sfd, &wfds)) {
             addrlen = sizeof(addr);
-            if ((newfd = accept(sfd, (struct sockaddr*) &addr, &addrlen)) == -1)
-                exit(1);
             switch (state) {
                 case idle:
                     afd = newfd;
                     state = busy;
+                    sendCommands();
+                    FD_SET(sfd, &rfds);
                     break;
                 case busy:
                     close(newfd);
                     break;
             }
         }
-        if (FD_ISSET(afd, &rfds)) {
-            if ((n = read(afd, receiverBuf, 128)) != 0) {
+
+        if (FD_ISSET(sfd, &rfds)) {
+            cout << "dentro do if de receber" << endl;
+            if ((n = receiveFromServer(afd)) != 0) {
                 if (n == -1)
                     exit(1);
             }
             else {
-                close(afd);
+                close(maxfd);
                 state = idle;
             }
         }
-        */
+    }
+}

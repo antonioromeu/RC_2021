@@ -27,21 +27,20 @@ void sendToServer(int sfd, char *buf) {
     strcpy(buf, "\0");
 }
 
-void receiveFromServer(int sfd, char *buf) {
-    if (read(sfd, buf, BUFFER) == -1) {
+void receiveFromServer(int sfd) {
+    if (read(sfd, receiverBuf, BUFFER) == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
-    strcpy(buf, "\0");
+    cout << receiverBuf << endl;
+    strcpy(receiverBuf, "\0");
 }
 
 void processComands() {
     addrlen = sizeof(addr);
     while (1) {
-        char str[50];
-        cin.getline(str, 50);
+        fgets(str, 50, stdin);
         sscanf(str, "%s ", command);
         if (!strcmp(command, "exit")) {
             const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
@@ -66,12 +65,12 @@ void processComands() {
                 const char *args[10] = {"REQ", " ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
                 sendToServer(sfd, createString(args, 10));
             }
-            else if (Fop[0] == 'L') {
+            else if (Fop[0] == 'L' || Fop[0] == 'X') {
                 const char *args[8] = {"REQ", " ", UID, " ", RID, " ", Fop, "\n"};
                 sendToServer(sfd, createString(args, 8));
             }
         }
-        receiveFromServer(sfd, receiverBuf);
+        receiveFromServer(sfd);
     }
 }
 
@@ -100,52 +99,3 @@ int main(int argc, char **argv) {
 
     processComands();
 }
-
-/*
-req Fop [Fname]
-REQ UID RID Fop [Fname]
-else if (!strcmp(command, "val")) {
-    
-}
-else if (!strcmp(command, "list")) {
-    
-}
-else if (!strcmp(command, "l-")) {
-    
-}
-else if (!strcmp(command, "retrieve")) {
-    
-}
-else if (!strcmp(command, "r")) {
-    
-}
-else if (!strcmp(command, "upload")) {
-    
-}
-else if (!strcmp(command, "u")) {
-    
-}
-else if (!strcmp(command, "delete")) {
-    
-}
-else if (!strcmp(command, "d")) {
-    
-}
-else if (!strcmp(command, "remove")) {
-    
-}
-else if (!strcmp(command, "x")) {
-    
-}
-n = write(sfd, "Hello!\n", 7);
-if(n == -1)
-    exit(1);
-
-n = read(sfd, buffer, 128);
-if(n == -1) 
-    exit(1);
-
-write(1, "echo: ", 6); 
-write(1, buffer, n);
-freeaddrinfo(res);
-*/
