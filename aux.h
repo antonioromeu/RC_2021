@@ -20,15 +20,14 @@
 
 using namespace std;
 
-socklen_t addrlen;
-struct addrinfo hints, *res;
-struct sockaddr_in addr;
+socklen_t addrlenClient, addrlenServer;
+struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
+struct sockaddr_in addrClient, addrServer;
 struct timeval timeout;
 size_t len;
 ssize_t nread, n;
-fd_set inputs, testfds, rfds, wfds;
-enum {idle, busy} state;
-int i, out_fds, sfd, s, errocode, j, newfd, afd = 0, maxfd, counter;
+fd_set inputs, testfds, rfds, wfds, pdfds, readfds, writefds;
+int i, out_fds, sfd, s, errocode, j, newfd, maxfd, counter;
 char str[128];
 char senderBuf[BUFFER] = "";
 char receiverBuf[BUFFER] = "";

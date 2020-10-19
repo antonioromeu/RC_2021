@@ -1,5 +1,10 @@
 #include "aux.h"
 
+int afd = 0, clientUDP, serverUDP;
+socklen_t addrlenClient, addrlenServer;
+struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
+struct sockaddr_in addrClient, addrServer;
+
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -16,21 +21,21 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
-void sendToServer(int sfd, char *buf) {
-    if (sendto(sfd, buf, strlen(buf), 0, res->ai_addr, res->ai_addrlen) == -1) {
+void sendToServer(char *buf) {
+    if (sendto(clientUDP, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(sfd); 
+        close(clientUDP); 
         exit(EXIT_FAILURE);
     }
     cout << buf << endl;
     strcpy(buf, "\0");
 }
 
-int receiveFromServer(int sfd) {
-    int n = recvfrom(sfd, receiverBuf, BUFFER, 0, (struct sockaddr*) &addr, &addrlen);
+int receiveFromServer() {
+    int n = recvfrom(serverUDP, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(sfd); 
+        close(serverUDP); 
         exit(EXIT_FAILURE);
     }
     cout << receiverBuf << endl;
@@ -38,92 +43,102 @@ int receiveFromServer(int sfd) {
     return n;
 }
 
-void sendCommands() {
-    addrlen = sizeof(addr);
-    while (1) {
-        fgets(str, 50, stdin);
-        sscanf(str, "%s ", command);
-        if (!strcmp(command, "exit")) {
-            const char *args[5] = {"UNR", " ", UID, " ", pass};
-            sendToServer(sfd, createString(args, 5));
-            close(sfd);
-            exit(EXIT_SUCCESS);
-            break;
+void processCommands() {
+    fgets(str, 50, stdin);
+    sscanf(str, "%s ", command);
+    if (!strcmp(command, "exit")) {
+        const char *args[5] = {"UNR", " ", UID, " ", pass};
+        sendToServer(createString(args, 5));
+        close(clientUDP);
+        close(serverUDP);
+        exit(EXIT_SUCCESS);
+    }
+    else if (!strcmp(command, "reg")) {
+        sscanf(str, "%s %s %s", command, UID, pass);
+        if (!checkUID(UID) || !checkPass(pass)) {
+            close(clientUDP);
+            close(serverUDP);
+            exit(EXIT_FAILURE);
         }
-        else if (!strcmp(command, "reg")) {
-            sscanf(str, "%s %s %s", command, UID, pass);
-            if (!checkUID(UID) || !checkPass(pass)) {
-                close(sfd);
-                exit(EXIT_FAILURE);
-            }
-            const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-            sendToServer(sfd, createString(args, 10));
-        }
-        receiveFromServer(sfd);
+        const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+        sendToServer(createString(args, 10));
     }
 }
 
 int main(int argc, char **argv) {
     parseArgs(argc, argv);
     
-    sfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sfd == -1)
+    clientUDP = socket(AF_INET, SOCK_DGRAM, 0);
+    if (clientUDP == -1)
         exit(1);
-
-    state = idle;
-    memset(&hints, 0, sizeof hints);
+    memset(&hintsClient, 0, sizeof hintsClient);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-
-    s = getaddrinfo(ASIP, ASport, &hints, &res);
+    s = getaddrinfo(ASIP, ASport, &hintsClient, &resClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        close(sfd);
+        close(clientUDP);
         exit(EXIT_FAILURE);
     }
+    addrlenClient = sizeof(addrClient);
+
+    serverUDP = socket(AF_INET, SOCK_DGRAM, 0);
+    if (serverUDP == -1)
+        exit(1);
+    memset(&hintsServer, 0, sizeof hintsServer);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    s = getaddrinfo(NULL, ASport, &hintsServer, &resServer);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(serverUDP);
+        exit(EXIT_FAILURE);
+    }
+    addrlenServer = sizeof(addrServer);
+    
+    if (bind(serverUDP, (const sockaddr*) &hintsServer, addrlenServer) < 0 ) { 
+        perror("Bind failed"); 
+        exit(EXIT_FAILURE); 
+    }
+
     while (1) {
         timeout.tv_sec = 120;
         timeout.tv_usec = 0;
-        // clear descriptor 
-        FD_ZERO(&rfds);
-        FD_ZERO(&wfds);
-        FD_SET(sfd, &wfds);
-
-        maxfd = sfd;
-        if (state == busy) {
-            //FD_SET(afd, &wfds);
-            maxfd = max(maxfd, afd);
-        }
-
-        counter = select(maxfd + 1, &rfds, &wfds, NULL, &timeout);
-        if (counter <= 0)
-            exit(EXIT_FAILURE);
-
-        if (FD_ISSET(sfd, &wfds)) {
-            addrlen = sizeof(addr);
-            switch (state) {
-                case idle:
-                    afd = newfd;
-                    state = busy;
-                    sendCommands();
-                    FD_SET(sfd, &rfds);
-                    break;
-                case busy:
-                    close(newfd);
-                    break;
-            }
-        }
-
-        if (FD_ISSET(sfd, &rfds)) {
-            cout << "dentro do if de receber" << endl;
-            if ((n = receiveFromServer(afd)) != 0) {
-                if (n == -1)
-                    exit(1);
-            }
-            else {
-                close(maxfd);
-                state = idle;
-            }
+        FD_ZERO(&readfds);
+        FD_SET(afd, &readfds); // i.e reg 92427 ...
+        FD_SET(clientUDP, &readfds); // i.e REG OK
+        FD_SET(serverUDP, &readfds); // VLC 9999
+        maxfd = max(afd, clientUDP);
+        maxfd = max(maxfd, serverUDP);
+        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        switch (out_fds) {
+            case 0:
+                printf("Timeout\n");
+                break;
+            case -1:
+                perror("Select\n");
+                exit(EXIT_FAILURE);
+            default:
+                cout << out_fds << endl;
+                for (int i = 0; i <= out_fds; i++) {
+                    if (FD_ISSET(afd, &readfds)) {
+                        FD_CLR(afd, &readfds);
+                        processCommands();
+                        cout << "afd" << endl;
+                        break;
+                    }
+                    else if (FD_ISSET(clientUDP, &readfds)) {
+                        FD_CLR(clientUDP, &readfds);
+                        receiveFromServer();
+                        cout << "client" << endl;
+                        break;
+                    }
+                    /*if (FD_ISSET(serverUDP, &readfds)) {
+                        receiveFromServer();
+                        cout << "server" << endl;
+                        break;
+                    }*/
+                }
         }
     }
 }

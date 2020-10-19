@@ -1,5 +1,9 @@
 #include "aux.h"
 
+socklen_t addrlen;
+struct addrinfo hints, *res;
+struct sockaddr_in addr;
+
 void parseArgs(int argc, char *argv[]){
     if (argc < 1 || argc > 9) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);

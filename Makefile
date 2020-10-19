@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -Wall -std=c++11
-IP = 192.168.2.46
+IP = 193.136.128.104
 
 all: pd user
 
