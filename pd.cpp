@@ -2,7 +2,7 @@
 
 int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
-struct addrinfo hintsClient, hintsServer, *resClient, *resServer, *p;
+struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
 struct sockaddr_in addrClient, addrServer;
 
 void parseArgs(int argc, char *argv[]) {
@@ -31,13 +31,14 @@ void sendToServer(char *buf) {
     strcpy(buf, "\0");
 }
 
-int receiveFromServer() {
-    int n = recvfrom(serverUDP, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
+int receiveFromServer(int socket) {
+    int n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(serverUDP); 
+        close(socket); 
         exit(EXIT_FAILURE);
     }
+    receiverBuf[n] = '\0';
     cout << receiverBuf << endl;
     strcpy(receiverBuf, "\0");
     return n;
@@ -47,8 +48,8 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        const char *args[5] = {"UNR", " ", UID, " ", pass};
-        sendToServer(createString(args, 5));
+        const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
+        sendToServer(createString(args, 6));
         close(clientUDP);
         close(serverUDP);
         exit(EXIT_SUCCESS);
@@ -80,7 +81,6 @@ int main(int argc, char **argv) {
         close(clientUDP);
         exit(EXIT_FAILURE);
     }
-    addrlenClient = sizeof(addrClient);
 
     serverUDP = socket(AF_INET, SOCK_DGRAM, 0);
     if (serverUDP == -1)
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         FD_ZERO(&readfds);
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(clientUDP, &readfds); // i.e REG OK
-        FD_SET(serverUDP, &readfds); // VLC 9999
+        FD_SET(serverUDP, &readfds); // i.e VLC 9999
         maxfd = max(clientUDP, serverUDP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
@@ -119,26 +119,17 @@ int main(int argc, char **argv) {
                 perror("Select\n");
                 exit(EXIT_FAILURE);
             default:
-                cout << out_fds << endl;
-                for (int i = 0; i <= out_fds; i++) {
-                    if (FD_ISSET(afd, &readfds)) {
-                        FD_CLR(afd, &readfds);
-                        processCommands();
-                        cout << "afd" << endl;
-                        break;
-                    }
-                    if (FD_ISSET(clientUDP, &readfds)) {
-                        FD_CLR(clientUDP, &readfds);
-                        receiveFromServer();
-                        cout << "client" << endl;
-                        break;
-                    }
-                    if (FD_ISSET(serverUDP, &readfds)) {
-                        FD_CLR(serverUDP, &readfds);
-                        receiveFromServer();
-                        cout << "server" << endl;
-                        break;
-                    }
+                if (FD_ISSET(afd, &readfds)) {
+                    processCommands();
+                    break;
+                }
+                if (FD_ISSET(clientUDP, &readfds)) {
+                    receiveFromServer(clientUDP);
+                    break;
+                }
+                if (FD_ISSET(serverUDP, &readfds)) {
+                    receiveFromServer(serverUDP);
+                    break;
                 }
         }
     }

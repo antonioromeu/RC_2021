@@ -80,8 +80,7 @@ bool checkPass(char *str) {
 }
 
 char* createString(const char **args, int len) {
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++)
         strcat(senderBuf, args[i]);
-    }
     return senderBuf;
 }
