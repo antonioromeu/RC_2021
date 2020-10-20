@@ -2,7 +2,7 @@
 
 int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
-struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
+struct addrinfo hintsClient, hintsServer, *resClient, *resServer, *p;
 struct sockaddr_in addrClient, addrServer;
 
 void parseArgs(int argc, char *argv[]) {
@@ -24,7 +24,7 @@ void parseArgs(int argc, char *argv[]) {
 void sendToServer(char *buf) {
     if (sendto(clientUDP, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen) == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(clientUDP); 
+        close(clientUDP);
         exit(EXIT_FAILURE);
     }
     cout << buf << endl;
@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
     if (clientUDP == -1)
         exit(1);
     memset(&hintsClient, 0, sizeof hintsClient);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
+    hintsClient.ai_family = AF_INET;
+    hintsClient.ai_socktype = SOCK_DGRAM;
     s = getaddrinfo(ASIP, ASport, &hintsClient, &resClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
@@ -86,8 +86,9 @@ int main(int argc, char **argv) {
     if (serverUDP == -1)
         exit(1);
     memset(&hintsServer, 0, sizeof hintsServer);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
+    hintsServer.ai_family = AF_INET;
+    hintsServer.ai_socktype = SOCK_DGRAM;
+    hintsServer.ai_flags = AI_PASSIVE;
     s = getaddrinfo(NULL, ASport, &hintsServer, &resServer);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
     }
     addrlenServer = sizeof(addrServer);
     
-    if (bind(serverUDP, (const sockaddr*) &hintsServer, addrlenServer) < 0 ) { 
+    if (bind(serverUDP, resServer->ai_addr, resServer->ai_addrlen) < 0 ) { 
         perror("Bind failed"); 
         exit(EXIT_FAILURE); 
     }
@@ -108,8 +109,7 @@ int main(int argc, char **argv) {
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(clientUDP, &readfds); // i.e REG OK
         FD_SET(serverUDP, &readfds); // VLC 9999
-        maxfd = max(afd, clientUDP);
-        maxfd = max(maxfd, serverUDP);
+        maxfd = max(clientUDP, serverUDP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
             case 0:
@@ -127,17 +127,18 @@ int main(int argc, char **argv) {
                         cout << "afd" << endl;
                         break;
                     }
-                    else if (FD_ISSET(clientUDP, &readfds)) {
+                    if (FD_ISSET(clientUDP, &readfds)) {
                         FD_CLR(clientUDP, &readfds);
                         receiveFromServer();
                         cout << "client" << endl;
                         break;
                     }
-                    /*if (FD_ISSET(serverUDP, &readfds)) {
+                    if (FD_ISSET(serverUDP, &readfds)) {
+                        FD_CLR(serverUDP, &readfds);
                         receiveFromServer();
                         cout << "server" << endl;
                         break;
-                    }*/
+                    }
                 }
         }
     }

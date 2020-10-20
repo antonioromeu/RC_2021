@@ -20,9 +20,9 @@
 
 using namespace std;
 
-socklen_t addrlenClient, addrlenServer;
-struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
-struct sockaddr_in addrClient, addrServer;
+// socklen_t addrlenClient, addrlenServer;
+// struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
+// struct sockaddr_in addrClient, addrServer;
 struct timeval timeout;
 size_t len;
 ssize_t nread, n;
