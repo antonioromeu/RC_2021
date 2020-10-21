@@ -31,7 +31,7 @@ void sendToServer(char *buf) {
     strcpy(buf, "\0");
 }
 
-int receiveFromServer(int socket) {
+void receiveFromServer(int socket) {
     int n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
@@ -41,7 +41,6 @@ int receiveFromServer(int socket) {
     receiverBuf[n] = '\0';
     cout << receiverBuf << endl;
     strcpy(receiverBuf, "\0");
-    return n;
 }
 
 void processCommands() {
@@ -89,7 +88,7 @@ int main(int argc, char **argv) {
     hintsServer.ai_family = AF_INET;
     hintsServer.ai_socktype = SOCK_DGRAM;
     hintsServer.ai_flags = AI_PASSIVE;
-    s = getaddrinfo(NULL, ASport, &hintsServer, &resServer);
+    s = getaddrinfo(NULL, PDport, &hintsServer, &resServer);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         close(serverUDP);
@@ -128,6 +127,7 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(serverUDP, &readfds)) {
+                    cout << "aqui" << endl;
                     receiveFromServer(serverUDP);
                     break;
                 }

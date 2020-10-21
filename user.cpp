@@ -44,36 +44,33 @@ void receiveFromServer(int sfd) {
 }
 
 void processCommands() {
-    while (1) {
-        fgets(str, 50, stdin);
-        sscanf(str, "%s ", command);
-        if (!strcmp(command, "exit")) {
-            const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
-            sendToServer(ASClientTCP, createString(args, 6));
-            close(sfd);
-            exit(EXIT_SUCCESS);
-            break;
+    fgets(str, 50, stdin);
+    sscanf(str, "%s ", command);
+    if (!strcmp(command, "exit")) {
+        const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
+        sendToServer(ASClientTCP, createString(args, 6));
+        close(ASClientTCP);
+        exit(EXIT_SUCCESS);
+    }
+    else if (!strcmp(command, "login")) {
+        sscanf(str, "%s %s %s", command, UID, pass);
+        if (!checkUID(UID) || !checkPass(pass))
+            exit(EXIT_FAILURE);
+        const char *args[6] = {"LOG", " ", UID, " ", pass, "\n"};
+        sendToServer(ASClientTCP, createString(args, 6));
+    }
+    else if (!strcmp(command, "req")) {
+        sscanf(str, "%s %s", command, Fop);
+        srand(time(NULL));
+        sprintf(RID, "%d", rand() % 9000 + 1000);
+        if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
+            sscanf(str, "%s %s %s", command, Fop, Fname);
+            const char *args[10] = {"REQ", " ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
+            sendToServer(ASClientTCP, createString(args, 10));
         }
-        else if (!strcmp(command, "login")) {
-            sscanf(str, "%s %s %s", command, UID, pass);
-            if (!checkUID(UID) || !checkPass(pass))
-                exit(EXIT_FAILURE);
-            const char *args[6] = {"LOG", " ", UID, " ", pass, "\n"};
-            sendToServer(ASClientTCP, createString(args, 6));
-        }
-        else if (!strcmp(command, "req")) {
-            sscanf(str, "%s %s", command, Fop);
-            srand(time(NULL));
-            sprintf(RID, "%d", rand() % 9000 + 1000);
-            if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-                sscanf(str, "%s %s %s", command, Fop, Fname);
-                const char *args[10] = {"REQ", " ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
-                sendToServer(ASClientTCP, createString(args, 10));
-            }
-            else if (Fop[0] == 'L' || Fop[0] == 'X') {
-                const char *args[8] = {"REQ", " ", UID, " ", RID, " ", Fop, "\n"};
-                sendToServer(ASClientTCP, createString(args, 8));
-            }
+        else if (!strcmp(Fop, "L") || !strcmp(Fop, "X")) {
+            const char *args[8] = {"REQ", " ", UID, " ", RID, " ", Fop, "\n"};
+            sendToServer(ASClientTCP, createString(args, 8));
         }
     }
 }
@@ -94,12 +91,12 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     if (connect(ASClientTCP, resASClient->ai_addr, resASClient->ai_addrlen) == -1) {
-        perror("Nao conectou1");
         close(ASClientTCP);
         exit(EXIT_FAILURE);
     }
     
     /*----------FSserverTCP---------------------------------*/
+    /*
     FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
     if (FSClientTCP == -1)
         exit(1);
@@ -118,7 +115,8 @@ int main(int argc, char **argv) {
         perror("Nao conectou2");
         close(FSClientTCP);
         exit(EXIT_FAILURE);
-    }    
+    }
+    */
 
     while (1) {
         timeout.tv_sec = 120;
@@ -126,9 +124,9 @@ int main(int argc, char **argv) {
         FD_ZERO(&readfds);
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(ASClientTCP, &readfds); // i.e VLC 9999
-        FD_SET(FSClientTCP, &readfds); // i.e REG OK
-        maxfd = max(ASClientTCP, FSClientTCP);
-        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        //FD_SET(FSClientTCP, &readfds); // i.e REG OK
+        //maxfd = max(ASClientTCP, FSClientTCP);
+        out_fds = select(ASClientTCP + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
             case 0:
                 printf("Timeout\n");
@@ -145,10 +143,12 @@ int main(int argc, char **argv) {
                     receiveFromServer(ASClientTCP);
                     break;
                 }
+                /*
                 if (FD_ISSET(FSClientTCP, &readfds)) {
                     receiveFromServer(FSClientTCP);
                     break;
                 }
+                */
         }
     }
 }

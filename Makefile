@@ -10,7 +10,7 @@ pd:
 
 user:
 	$(CC) $(CFLAGS) user.cpp -o user
-	./user -n tejo.tecnico.ulisboa.pt -p 58011 -m tejo.tecnico.ulisboa.pt -q 59000
+	./user -n tejo.tecnico.ulisboa.pt -p 58011 -m tejo.tecnico.ulisboa.pt
 
 clean:
 	@echo Cleaning...
