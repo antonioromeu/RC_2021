@@ -2,8 +2,12 @@
 
 int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
-struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
-struct sockaddr_in addrClient, addrServer;
+struct addrinfo hintsClient;
+struct addrinfo hintsServer;
+struct addrinfo *resClient;
+struct addrinfo *resServer;
+struct sockaddr_in addrClient;
+struct sockaddr_in addrServer;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
@@ -21,26 +25,48 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
-void sendToServer(char *buf) {
-    if (sendto(clientUDP, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen) == -1) {
+void sendToServer(char *buf, int socket) {
+    int n = 0;
+    if (socket == clientUDP)
+        n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);
+    if (socket == serverUDP)
+        n = sendto(socket, buf, strlen(buf), 0, resServer->ai_addr, resServer->ai_addrlen);
+    if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(clientUDP);
+        close(socket);
         exit(EXIT_FAILURE);
     }
+    cout << "sending" << endl;
     cout << buf << endl;
-    strcpy(buf, "\0");
 }
 
-void receiveFromServer(int socket) {
-    int n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
+void processASAnswer(char *buf) {
+    sscanf(buf, "%s %s %s %s", command, recvUID, VC, Fop);
+    if (!strcmp(command, "VLC") && !strcmp(UID, recvUID))
+        sendToServer((char*) "RVC OK\n", serverUDP);
+    else if (!strcmp(command, "VLC") && strcmp(UID, recvUID))
+        sendToServer((char*) "RVC NOK\n", serverUDP);
+}
+
+char *receiveFromSocket(int socket) {
+    int n = 0;
+    strcpy(receiverBuf, "\0");
+    if (socket == clientUDP)
+        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
+    else if (socket == serverUDP) {
+        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
+        if (n != -1)
+            processASAnswer(receiverBuf);
+    }
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(socket); 
         exit(EXIT_FAILURE);
     }
     receiverBuf[n] = '\0';
+    cout << "receiving" << endl;
     cout << receiverBuf << endl;
-    strcpy(receiverBuf, "\0");
+    return receiverBuf;
 }
 
 void processCommands() {
@@ -48,7 +74,7 @@ void processCommands() {
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
         const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
-        sendToServer(createString(args, 6));
+        sendToServer(createString(args, 6), clientUDP);
         close(clientUDP);
         close(serverUDP);
         exit(EXIT_SUCCESS);
@@ -61,7 +87,7 @@ void processCommands() {
             exit(EXIT_FAILURE);
         }
         const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-        sendToServer(createString(args, 10));
+        sendToServer(createString(args, 10), clientUDP);
     }
 }
 
@@ -80,6 +106,7 @@ int main(int argc, char **argv) {
         close(clientUDP);
         exit(EXIT_FAILURE);
     }
+    addrlenClient = sizeof(addrClient);
 
     serverUDP = socket(AF_INET, SOCK_DGRAM, 0);
     if (serverUDP == -1)
@@ -123,12 +150,11 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(clientUDP, &readfds)) {
-                    receiveFromServer(clientUDP);
+                    receiveFromSocket(clientUDP);
                     break;
                 }
                 if (FD_ISSET(serverUDP, &readfds)) {
-                    cout << "aqui" << endl;
-                    receiveFromServer(serverUDP);
+                    receiveFromSocket(serverUDP);
                     break;
                 }
         }

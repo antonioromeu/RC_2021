@@ -37,6 +37,7 @@ char ASIP[50] = "localhost";
 char ASport[6] = "58032";
 char command[5] = "";
 char UID[6] = "";
+char recvUID[5] = "";
 char pass[9] = "";
 char buffer[128] = "";
 char FSIP[50] = "localhost";
@@ -44,7 +45,7 @@ char FSport[6]= "59032";
 char Fop[50] = "";
 char Fname[50] = "";
 char RID[4] = "";
-char VC[1] = "";
+char VC[5] = "";
 char filename[1] = "";
 
 bool isNumeric(char *str) {
@@ -80,6 +81,7 @@ bool checkPass(char *str) {
 }
 
 char* createString(const char **args, int len) {
+    strcpy(senderBuf, "\0");
     for (int i = 0; i < len; i++)
         strcat(senderBuf, args[i]);
     return senderBuf;

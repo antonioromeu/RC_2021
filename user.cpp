@@ -27,7 +27,6 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
     strcpy(buf, "\0");
 }
 
