@@ -9,6 +9,8 @@ struct addrinfo *resServer;
 struct sockaddr_in addrClient;
 struct sockaddr_in addrServer;
 
+char status[3] = "";
+
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
@@ -27,34 +29,50 @@ void parseArgs(int argc, char *argv[]) {
 
 void sendToServer(char *buf, int socket) {
     int n = 0;
-    if (socket == clientUDP)
-        n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);
-    if (socket == serverUDP)
-        n = sendto(socket, buf, strlen(buf), 0, resServer->ai_addr, resServer->ai_addrlen);
+    if (socket == clientUDP) 
+        n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);     //target
+    else if (socket == serverUDP)
+        n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrServer, addrlenServer);     //target
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(socket);
         exit(EXIT_FAILURE);
     }
-    cout << "sending" << endl;
-    cout << buf << endl;
+    cout << buf;
 }
 
 void processASAnswer(char *buf) {
     sscanf(buf, "%s %s %s %s", command, recvUID, VC, Fop);
-    if (!strcmp(command, "VLC") && !strcmp(UID, recvUID))
-        sendToServer((char*) "RVC OK\n", serverUDP);
-    else if (!strcmp(command, "VLC") && strcmp(UID, recvUID))
-        sendToServer((char*) "RVC NOK\n", serverUDP);
+    if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D')
+        sscanf(Fop, "%s %s", Fop, Fname);
+    if (!strcmp(command, "VLC") && !strcmp(UID, recvUID)) {
+        const char *args[3] = {"RVC ", UID, " OK\n"};
+        sendToServer(createString(args, 3), serverUDP);
+    }
+    else if (!strcmp(command, "VLC") && strcmp(UID, recvUID)) {
+        const char *args[3] = {"RVC ", UID, " NOK\n"};
+        sendToServer(createString(args, 3), serverUDP);
+    }
 }
 
 char *receiveFromSocket(int socket) {
     int n = 0;
     strcpy(receiverBuf, "\0");
-    if (socket == clientUDP)
+    if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
-    else if (socket == serverUDP) {
-        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);
+        receiverBuf[n] = '\0';
+        cout << receiverBuf;
+        sscanf(receiverBuf, "%s %s", command, status);
+        if (!strcmp(command, "RUN") && !strcmp(status, "OK")) {
+            close(clientUDP);
+            close(serverUDP);
+            exit(EXIT_SUCCESS);
+        }
+    }
+    if (socket == serverUDP) {
+        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
+        receiverBuf[n] = '\0';
+        cout << receiverBuf;
         if (n != -1)
             processASAnswer(receiverBuf);
     }
@@ -63,9 +81,6 @@ char *receiveFromSocket(int socket) {
         close(socket); 
         exit(EXIT_FAILURE);
     }
-    receiverBuf[n] = '\0';
-    cout << "receiving" << endl;
-    cout << receiverBuf << endl;
     return receiverBuf;
 }
 
@@ -73,11 +88,11 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
-        sendToServer(createString(args, 6), clientUDP);
-        close(clientUDP);
-        close(serverUDP);
-        exit(EXIT_SUCCESS);
+        const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
+        sendToServer(createString(args, 5), clientUDP);
+        //close(clientUDP);
+        //close(serverUDP);
+        //exit(EXIT_SUCCESS);
     }
     else if (!strcmp(command, "reg")) {
         sscanf(str, "%s %s %s", command, UID, pass);
@@ -86,8 +101,8 @@ void processCommands() {
             close(serverUDP);
             exit(EXIT_FAILURE);
         }
-        const char *args[10] = {"REG", " ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-        sendToServer(createString(args, 10), clientUDP);
+        const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+        sendToServer(createString(args, 9), clientUDP);
     }
 }
 
@@ -123,9 +138,9 @@ int main(int argc, char **argv) {
     }
     addrlenServer = sizeof(addrServer);
     
-    if (bind(serverUDP, resServer->ai_addr, resServer->ai_addrlen) < 0 ) { 
-        perror("Bind failed"); 
-        exit(EXIT_FAILURE); 
+    if (bind(serverUDP, resServer->ai_addr, resServer->ai_addrlen) < 0 ) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
     }
 
     while (1) {

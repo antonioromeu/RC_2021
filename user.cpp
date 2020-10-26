@@ -27,6 +27,7 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
+    cout << buf << 
     strcpy(buf, "\0");
 }
 
@@ -46,8 +47,8 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        const char *args[6] = {"UNR", " ", UID, " ", pass, "\n"};
-        sendToServer(ASClientTCP, createString(args, 6));
+        const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
+        sendToServer(ASClientTCP, createString(args, 5));
         close(ASClientTCP);
         exit(EXIT_SUCCESS);
     }
@@ -55,21 +56,21 @@ void processCommands() {
         sscanf(str, "%s %s %s", command, UID, pass);
         if (!checkUID(UID) || !checkPass(pass))
             exit(EXIT_FAILURE);
-        const char *args[6] = {"LOG", " ", UID, " ", pass, "\n"};
-        sendToServer(ASClientTCP, createString(args, 6));
+        const char *args[5] = {"LOG ", UID, " ", pass, "\n"};
+        sendToServer(ASClientTCP, createString(args, 5));
     }
     else if (!strcmp(command, "req")) {
         sscanf(str, "%s %s", command, Fop);
-        srand(time(NULL));
+        srand(time(0));
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-            sscanf(str, "%s %s %s", command, Fop, Fname);
-            const char *args[10] = {"REQ", " ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
-            sendToServer(ASClientTCP, createString(args, 10));
+            sscanf(Fop, "%s %s", Fop, Fname);
+            const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
+            sendToServer(ASClientTCP, createString(args, 9));
         }
         else if (!strcmp(Fop, "L") || !strcmp(Fop, "X")) {
-            const char *args[8] = {"REQ", " ", UID, " ", RID, " ", Fop, "\n"};
-            sendToServer(ASClientTCP, createString(args, 8));
+            const char *args[7] = {"REQ ", UID, " ", RID, " ", Fop, "\n"};
+            sendToServer(ASClientTCP, createString(args, 7));
         }
     }
 }
