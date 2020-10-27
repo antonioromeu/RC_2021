@@ -27,7 +27,7 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
+    //cout << buf << endl;
     strcpy(buf, "\0");
 }
 
@@ -39,7 +39,7 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     receiverBuf[n] = '\0';
-    cout << receiverBuf << endl;
+    cout << receiverBuf;
     strcpy(receiverBuf, "\0");
 }
 
@@ -47,8 +47,8 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
-        sendToServer(ASClientTCP, createString(args, 5));
+        //const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
+        //sendToServer(ASClientTCP, createString(args, 5));
         close(ASClientTCP);
         exit(EXIT_SUCCESS);
     }
@@ -72,6 +72,11 @@ void processCommands() {
             const char *args[7] = {"REQ ", UID, " ", RID, " ", Fop, "\n"};
             sendToServer(ASClientTCP, createString(args, 7));
         }
+    }
+    else if (!strcmp(command, "val")) {
+        sscanf(str, "%s %s", command, VC);
+        const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
+        sendToServer(ASClientTCP, createString(args, 7));
     }
 }
 
