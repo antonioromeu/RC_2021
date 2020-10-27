@@ -35,17 +35,18 @@ char PDIP[50] = "";
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
 char ASport[6] = "58032";
-char command[5] = "";
-char UID[5] = "";
-char recvUID[5] = "";
+char command[6] = "";
+char UID[6] = "";
+char recvUID[6] = "";
 char pass[9] = "";
 char buffer[128] = "";
 char FSIP[50] = "localhost";
 char FSport[6]= "59032";
 char Fop[50] = "";
 char Fname[50] = "";
-char RID[4] = "";
-char VC[4] = "";
+char RID[5] = "";
+char VC[5] = "";
+char status[4] = "";
 char filename[1] = "";
 
 bool isNumeric(char *str) {

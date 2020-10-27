@@ -38,7 +38,6 @@ void sendToServer(char *buf, int socket) {
         close(socket);
         exit(EXIT_FAILURE);
     }
-    cout << buf;
 }
 
 void processASAnswer(char *buf) {
@@ -50,6 +49,7 @@ void processASAnswer(char *buf) {
         sendToServer(createString(args, 3), serverUDP);
     }
     else if (!strcmp(command, "VLC") && strcmp(UID, recvUID)) {
+        cout << "3 " << UID << endl;
         const char *args[3] = {"RVC ", UID, " NOK\n"};
         sendToServer(createString(args, 3), serverUDP);
     }
@@ -88,11 +88,9 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
+        cout << "process comands " << UID << endl;
         const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
         sendToServer(createString(args, 5), clientUDP);
-        //close(clientUDP);
-        //close(serverUDP);
-        //exit(EXIT_SUCCESS);
     }
     else if (!strcmp(command, "reg")) {
         sscanf(str, "%s %s %s", command, UID, pass);
