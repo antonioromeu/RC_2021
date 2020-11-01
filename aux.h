@@ -47,7 +47,8 @@ char Fname[50] = "";
 char RID[5] = "";
 char VC[5] = "";
 char status[4] = "";
-char filename[1] = "";
+char TID[5] = "";
+char filename[128] = "";
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)

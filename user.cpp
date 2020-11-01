@@ -1,10 +1,10 @@
 #include "aux.h"
 
-int afd = 0, ASClientTCP, FSClientTCP;
+int afd = 0, ASClientTCP, FSClientTCP = -1;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
 struct sockaddr_in addrClient, addrServer;
 
-void parseArgs(int argc, char *argv[]){
+void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -27,9 +27,19 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    //cout << buf << endl;
+    cout << buf << endl;
     strcpy(buf, "\0");
 }
+
+void receivingCommand(char *buf) {
+    sscanf(buf, "%s ", command);
+    if (!strcmp(command, "RAU"))
+        sscanf(buf, "%s %s", command, TID);
+    else if (!strcmp(command, "RLS")) {
+        close(FSClientTCP);
+    }
+}
+
 
 void receiveFromServer(int sfd) {
     int n = read(sfd, receiverBuf, BUFFER);
@@ -39,8 +49,29 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     receiverBuf[n] = '\0';
+    receivingCommand(receiverBuf);
     cout << receiverBuf;
     strcpy(receiverBuf, "\0");
+}
+
+void openFSConnection() {
+    FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
+    if (FSClientTCP == -1)
+        exit(1);
+    memset(&hintsFSClient, 0, sizeof hintsFSClient);
+    hintsFSClient.ai_family = AF_INET;
+    hintsFSClient.ai_socktype = SOCK_STREAM;
+    s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(FSClientTCP);
+        exit(EXIT_FAILURE);
+    }
+    if (connect(FSClientTCP, resFSClient->ai_addr, resFSClient->ai_addrlen) == -1) {
+        perror("Nao conseguiu conectar ao FS");
+        close(FSClientTCP);
+        exit(EXIT_FAILURE);
+    }
 }
 
 void processCommands() {
@@ -78,6 +109,18 @@ void processCommands() {
         const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
         sendToServer(ASClientTCP, createString(args, 7));
     }
+    else if (!strcmp(command, "list") || !strcmp(command, "l-")) {
+        openFSConnection();
+        const char *args[5] = {"LST ", UID, " ", TID, "\n"};
+        sendToServer(FSClientTCP, createString(args, 5));
+    }
+    else if (!strcmp(command, "retrieve") || !strcmp(command, "r")) {
+        openFSConnection();
+        sscanf(str, "%s %s", command, filename);
+        strcpy(Fname, filename);
+        const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
+        sendToServer(FSClientTCP, createString(args, 7));
+    }
 }
 
 int main(int argc, char **argv) {
@@ -101,37 +144,29 @@ int main(int argc, char **argv) {
     }
     
     /*----------FSserverTCP---------------------------------*/
-    /*
-    FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
-    if (FSClientTCP == -1)
-        exit(1);
-    memset(&hintsFSClient, 0, sizeof hintsFSClient);
-    hintsFSClient.ai_family = AF_INET;
-    hintsFSClient.ai_socktype = SOCK_STREAM;
-    s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
-    if (s != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        close(FSClientTCP);
-        exit(EXIT_FAILURE);
-    } 
+    // FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
+    // if (FSClientTCP == -1)
+    //     exit(1);
+    // memset(&hintsFSClient, 0, sizeof hintsFSClient);
+    // hintsFSClient.ai_family = AF_INET;
+    // hintsFSClient.ai_socktype = SOCK_STREAM;
+    // s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
+    // if (s != 0) {
+    //     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+    //     close(FSClientTCP);
+    //     exit(EXIT_FAILURE);
+    // }
 
     //addrlenServer = sizeof(addrServer);
-    if (connect(FSClientTCP, resFSClient->ai_addr, resFSClient->ai_addrlen) == -1) {
-        perror("Nao conectou2");
-        close(FSClientTCP);
-        exit(EXIT_FAILURE);
-    }
-    */
-
     while (1) {
         timeout.tv_sec = 120;
         timeout.tv_usec = 0;
         FD_ZERO(&readfds);
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(ASClientTCP, &readfds); // i.e VLC 9999
-        //FD_SET(FSClientTCP, &readfds); // i.e REG OK
-        //maxfd = max(ASClientTCP, FSClientTCP);
-        out_fds = select(ASClientTCP + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        FD_SET(FSClientTCP, &readfds); // i.e REG OK
+        maxfd = max(ASClientTCP, FSClientTCP);
+        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
             case 0:
                 printf("Timeout\n");
@@ -148,12 +183,10 @@ int main(int argc, char **argv) {
                     receiveFromServer(ASClientTCP);
                     break;
                 }
-                /*
                 if (FD_ISSET(FSClientTCP, &readfds)) {
                     receiveFromServer(FSClientTCP);
                     break;
                 }
-                */
         }
     }
 }
