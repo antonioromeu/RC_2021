@@ -37,7 +37,7 @@ void receivingCommand(char *buf) {
     if (!strcmp(command, "RAU"))
         sscanf(buf, "%s %s", command, TID);
     else if (!strcmp(command, "RLS")) {
-        close(FSClientTCP);
+        shutdown(FSClientTCP, SHUT_RDWR);
         FD_CLR(FSClientTCP, &readfds);
         FSClientTCP = -1;
     }
