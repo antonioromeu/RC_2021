@@ -3,6 +3,8 @@
 int afd = 0, ASClientTCP, FSClientTCP = -1;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
 
+char status[4] = "";
+
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);

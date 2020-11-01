@@ -46,7 +46,6 @@ char Fop[50] = "";
 char Fname[50] = "";
 char RID[5] = "";
 char VC[5] = "";
-char status[4] = "";
 char TID[5] = "";
 char filename[128] = "";
 
