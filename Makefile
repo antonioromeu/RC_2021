@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -Wall -std=c++11
+CFLAGS = -g -Wall -Wextra -std=c++11
 IP = 193.136.128.104
 
 all: pd user
@@ -15,9 +15,3 @@ user:
 clean:
 	@echo Cleaning...
 	rm -f pd user
-
-# run: pd
-# 	./pd $(IP) -n tejo.tecnico.ulisboa.pt -p 58011
-
-# run: user
-# 	./user -n tejo.tecnico.ulisboa.pt -p 58011

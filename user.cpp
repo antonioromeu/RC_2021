@@ -24,7 +24,7 @@ void parseArgs(int argc, char *argv[]) {
 
 void sendToServer(int sfd, char *buf) {
     if (write(sfd, buf, strlen(buf)) == -1) {
-        fprintf(stderr, "partial/failed write\n");
+        fprintf(stderr, "Failed write to server\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
@@ -36,17 +36,17 @@ void receivingCommand(char *buf) {
     sscanf(buf, "%s ", command);
     if (!strcmp(command, "RAU"))
         sscanf(buf, "%s %s", command, TID);
-    else if (!strcmp(command, "RLS")) {
-        shutdown(FSClientTCP, SHUT_RDWR);
-        FD_CLR(FSClientTCP, &readfds);
-        FSClientTCP = -1;
-    }
+    // else if (!strcmp(command, "RLS")) {
+        // close(FSClientTCP);
+        // FD_CLR(FSClientTCP, &readfds);
+        // FSClientTCP = -1;
+    // }
 }
 
 void receiveFromServer(int sfd) {
     int n = read(sfd, receiverBuf, BUFFER);
     if (n == -1) {
-        fprintf(stderr, "partial/failed write\n");
+        fprintf(stderr, "Failed read from server\n");
         close(sfd); 
         exit(EXIT_FAILURE);
     }
@@ -98,7 +98,7 @@ void processCommands() {
         srand(time(0));
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-            sscanf(Fop, "%s %s", Fop, Fname);
+            sscanf(str, "%s %s %s", command, Fop, Fname);
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -112,8 +112,8 @@ void processCommands() {
         const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
         sendToServer(ASClientTCP, createString(args, 7));
     }
-    else if (!strcmp(command, "list") || !strcmp(command, "l-")) {
-        openFSConnection();
+    else if (!strcmp(command, "list") || !strcmp(command, "l")) {
+        // openFSConnection();
         // FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
         // if (FSClientTCP == -1)
         //     exit(1);
@@ -135,7 +135,7 @@ void processCommands() {
         sendToServer(FSClientTCP, createString(args, 5));
     }
     else if (!strcmp(command, "retrieve") || !strcmp(command, "r")) {
-        openFSConnection();
+        // openFSConnection();
         // FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
         // if (FSClientTCP == -1)
         //     exit(1);
@@ -190,6 +190,11 @@ int main(int argc, char **argv) {
     s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(FSClientTCP);
+        exit(EXIT_FAILURE);
+    }
+    if (connect(FSClientTCP, resFSClient->ai_addr, resFSClient->ai_addrlen) == -1) {
+        perror("Nao conseguiu conectar ao FS");
         close(FSClientTCP);
         exit(EXIT_FAILURE);
     }
