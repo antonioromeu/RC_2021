@@ -2,7 +2,6 @@
 
 int afd = 0, ASClientTCP, FSClientTCP = -1;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
-struct sockaddr_in addrClient, addrServer;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -35,8 +34,11 @@ void receivingCommand(char *buf) {
     sscanf(buf, "%s ", command);
     if (!strcmp(command, "RAU"))
         sscanf(buf, "%s %s", command, TID);
-    // else if (!strcmp(command, "RLS"))
-    //     close(FSClientTCP);
+    else if (!strcmp(command, "RLS")) {
+        close(FSClientTCP);
+        FD_CLR(FSClientTCP, &readfds);
+        FSClientTCP = -1;
+    }
 }
 
 void receiveFromServer(int sfd) {
@@ -71,7 +73,6 @@ void openFSConnection() {
         close(FSClientTCP);
         exit(EXIT_FAILURE);
     }
-    cout << FSClientTCP << endl;
 }
 
 void processCommands() {
@@ -191,7 +192,6 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    //addrlenServer = sizeof(addrServer);
     while (1) {
         timeout.tv_sec = 120;
         timeout.tv_usec = 0;
