@@ -4,6 +4,8 @@ int afd = 0, ASClientTCP, FSClientTCP = -1;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
 
 char status[4] = "";
+char rest[BUFFER] = "";
+char nrFiles[128] = "";;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -32,7 +34,9 @@ void sendToServer(int sfd, char *buf) {
     strcpy(buf, "\0");
 }
 
+/*
 void receivingCommand(char *buf) {
+    cout << "entrou no receiv" << endl;
     sscanf(buf, "%s ", command);
     if (!strcmp(command, "RAU"))
         sscanf(buf, "%s %s", command, TID);
@@ -42,16 +46,38 @@ void receivingCommand(char *buf) {
         // FSClientTCP = -1;
     // }
 }
+*/
 
 void receiveFromServer(int sfd) {
     int n = read(sfd, receiverBuf, BUFFER);
     if (n == -1) {
         fprintf(stderr, "Failed read from server\n");
-        close(sfd); 
+        close(sfd);
         exit(EXIT_FAILURE);
     }
     receiverBuf[n] = '\0';
-    receivingCommand(receiverBuf);
+    if (!strncmp(receiverBuf, "RAU", 3))
+        sscanf(receiverBuf, "%s %s", command, TID);
+    if (!strncmp(receiverBuf, "RLS", 3)) {
+        sscanf(receiverBuf, "%s %s ", command, nrFiles);
+        int i = 4 + strlen(nrFiles) + 1;
+        int j = atoi(nrFiles);
+        int k = 0;
+        int nSpaces = 2;
+        char auxString[BUFFER] = "";
+        for (; j != 0; j--) {
+            while (nSpaces) {
+                if (receiverBuf[i] == ' ')
+                    nSpaces--;
+                auxString[k++] = receiverBuf[i++];
+            }
+            auxString[k] = '\0';
+            k = 0;
+            nSpaces = 2;
+            cout << j << " " << auxString;
+            strcpy(auxString, "\0");
+        }
+    }
     cout << receiverBuf;
     strcpy(receiverBuf, "\0");
 }
