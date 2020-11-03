@@ -27,7 +27,7 @@ struct timeval timeout;
 size_t len;
 ssize_t nread, n;
 fd_set inputs, testfds, rfds, wfds, pdfds, readfds, writefds;
-int i, out_fds, sfd, s, errocode, j, newfd, maxfd, counter;
+int i, out_fds, sfd, s, errocode, j, newfd, counter;
 char str[128] = "";
 char senderBuf[BUFFER] = "";
 char receiverBuf[BUFFER] = "";
