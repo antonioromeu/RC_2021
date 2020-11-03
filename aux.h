@@ -49,6 +49,12 @@ char VC[5] = "";
 char TID[5] = "";
 char filename[128] = "";
 
+void append(char *s, char c) {
+    int len = strlen(s);
+    s[len] = c;
+    s[len + 1] = '\0';
+}
+
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
         if (isdigit(str[i]) == false)
@@ -63,7 +69,7 @@ bool isAlphanumeric(char *str) {
     return true;
 }
 
-bool checkUID(char *str) {
+bool checkUID(int sfd, char *str) {
     if (strlen(str) != 5 || !isNumeric(str)) {  
         perror("UID Error");
         close(sfd);
@@ -72,12 +78,21 @@ bool checkUID(char *str) {
     return true;
 }
 
-bool checkPass(char *str) {
-    if (strlen(pass) != 8 || !isAlphanumeric(pass)) {
+bool checkPass(int sfd, char *str) {
+    if (strlen(str) != 8 || !isAlphanumeric(str)) {
         perror ("Pass Error");
         close(sfd);
         return false;
     }
+    return true;
+}
+
+bool checkFilename(char *str) {
+    if (strlen(str) > 24)
+        return false;
+    for (int i = 0; i < (int) strlen(str); i++)
+        if (!isalnum(str[i]) && str[i] != '.' && str[i] != '-' && str[i] != '_')
+            return false;
     return true;
 }
 

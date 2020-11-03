@@ -2,8 +2,10 @@
 
 int afd = 0, ASClientTCP, FSClientTCP, maxfd;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
-char status[4] = "";
-char nrFiles[4] = "";
+char status[6];
+char nrFiles[4];
+char filesize[128];
+int nRead;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -28,10 +30,132 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
+    // cout << buf << endl;
     strcpy(buf, "\0");
 }
 
+void closeFSConnection() {
+    FD_CLR(FSClientTCP, &readfds);
+    close(FSClientTCP);
+}
+
+void receiveFromServer(int sfd) {
+    nRead = read(sfd, command, 4);
+    if (nRead == -1) {
+        fprintf(stderr, "Failed read from server\n");
+        close(sfd);
+        exit(EXIT_FAILURE);
+    }
+    command[nRead] = '\0';
+    if (!strcmp(command, "RLO ")) {
+        nRead = read(sfd, status, 4);
+        if (!strcmp(status, "OK\n"))
+            cout << "Login: successful" << endl;
+        else if (!strcmp(status, "NOK\n")) {
+            cout << "Login: not successful" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else {
+            cout << "Error" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (!strcmp(command, "RRQ ")) {
+        nRead = read(sfd, status, 6);
+        if (!strcmp(status, "OK\n"))
+            cout << "Request: successful" << endl;
+        else if (!strcmp(status, "NOK\n")) {
+            cout << "Request: not successful" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "ELOG\n")) {
+            cout << "Request: successful login not previously done" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "EPD\n")) {
+            cout << "Request: message couldnt be sent by AS to PD" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "EUSER\n")) {
+            cout << "Request: UID incorrect" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "EFOP\n")) {
+            cout << "Request: Fop is invalid" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else {
+            cout << "Error" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (!strcmp(command, "RAU ")) {
+        nRead = read(sfd, TID, 5);
+        if (!strcmp(TID, "0")) {
+            cout << "Authentication: failed" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        cout << "Authentication: successful" << endl;
+    }
+    if (!strcmp(command, "RLS ")) {
+        char aux[1];
+        while (1) {
+            nRead = read(sfd, aux, 1);
+            if (aux[0] == ' ' || aux[0] == '\n')
+                break;
+            strcat(nrFiles, aux);
+            strcpy(aux, "\0");
+        }
+        if (!strcmp(nrFiles, "EOF")) {
+            cout << "List: no files available" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(nrFiles, "INV")) {
+            cout << "List: AS validation error" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(nrFiles, "ERR")) {
+            cout << "List: LST request not correctly formulated" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        int nSpaces = 2;
+        for (int i = 1; i <= atoi(nrFiles); i++) {
+            while (nSpaces) {
+                nRead = read(sfd, aux, 1);
+                if (aux[0] == ' ') {
+                    nSpaces--;
+                    if (nSpaces == 1) {
+                        strcat(filename, "\0");
+                        if (!checkFilename(filename)) {
+                            cout << "List: invalid filename" << endl;
+                            closeFSConnection();
+                            return;
+                        }
+                    }
+                }
+                if (aux[0] == '\n')
+                    break;
+                strcat(filename, aux);
+            }
+            nSpaces = 2;
+            cout << filename;
+        }
+    }
+}
+
+/*
 void receiveFromServer(int sfd) {
     int n = read(sfd, receiverBuf, BUFFER);
     if (n == -1) {
@@ -51,8 +175,18 @@ void receiveFromServer(int sfd) {
         char auxString[BUFFER] = "";
         for (int l = 1; l <= j; l++) {
             while (nSpaces) {
-                if (receiverBuf[i] == ' ' || receiverBuf[i] == '\0')
+                if (receiverBuf[i] == ' ' || receiverBuf[i] == '\0') {
                     nSpaces--;
+                    if (nSpaces == 1) {
+                        auxString[k] = '\0';
+                        if (!checkFilename(auxString)) {
+                            strcpy(receiverBuf, "\0");
+                            closeFSConnection();
+                            perror("Invalid filename\n");
+                            return;
+                        }
+                    }
+                }
                 auxString[k++] = receiverBuf[i++];
             }
             auxString[k] = '\0';
@@ -62,33 +196,60 @@ void receiveFromServer(int sfd) {
             strcpy(auxString, "\0");
         }
         strcpy(receiverBuf, "\0");
-        close(FSClientTCP);
+        closeFSConnection();
+        return;
+    }
+    if (!strncmp(receiverBuf, "RRT", 3)) {
+        if (!strncmp(receiverBuf, "RRT EOF", 7))
+            perror("File not available");
+        else if (!strncmp(receiverBuf, "RRT NOK", 7))
+            perror("No content available");
+        else if (!strncmp(receiverBuf, "RRT OK", 6)) {
+            sscanf(receiverBuf, "%s %s %s ", command, status, filesize);
+            FILE *fp;
+            char recvFile[(int) atoi(filesize)];
+            for (int i = strlen(command) + strlen(status) + strlen(filesize) + 3, int k = 0; i < (int) (strlen(command) + strlen(status) + strlen(filesize) + 3 + atoi(filesize)); i++, k++)
+                recvFile[k++] = auxReceiverBuf[i];
+            fp = fopen(filename, "w");
+            int bytesLeft = atoi(filesize);
+            int loops = atoi(filesize) % 128;
+            while (loops > 1) {
+                fwrite(recvFile, 128, 1, fp);
+                loops--;
+                bytesLeft -= 128;
+            }
+            fwrite(recvFile, bytesLeft, 1, fp);
+        }
+        cout << receiverBuf;
+        closeFSConnection();
         return;
     }
     cout << receiverBuf;
     strcpy(receiverBuf, "\0");
 }
-
+*/
 
 void openFSConnection() {
     FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
     if (FSClientTCP == -1)
         exit(1);
+    FD_SET(FSClientTCP, &readfds);
     memset(&hintsFSClient, 0, sizeof hintsFSClient);
     hintsFSClient.ai_family = AF_INET;
     hintsFSClient.ai_socktype = SOCK_STREAM;
     s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        FD_CLR(FSClientTCP, &readfds);
         close(FSClientTCP);
         exit(EXIT_FAILURE);
     }
     if (connect(FSClientTCP, resFSClient->ai_addr, resFSClient->ai_addrlen) == -1) {
         perror("Nao conseguiu conectar ao FS");
+        FD_CLR(FSClientTCP, &readfds);
         close(FSClientTCP);
         exit(EXIT_FAILURE);
     }
-    cout << FSClientTCP << endl;
 }
 
 void processCommands() {
@@ -102,7 +263,7 @@ void processCommands() {
     }
     else if (!strcmp(command, "login")) {
         sscanf(str, "%s %s %s", command, UID, pass);
-        if (!checkUID(UID) || !checkPass(pass))
+        if (!checkUID(ASClientTCP, UID) || !checkPass(ASClientTCP, pass))
             exit(EXIT_FAILURE);
         const char *args[5] = {"LOG ", UID, " ", pass, "\n"};
         sendToServer(ASClientTCP, createString(args, 5));
@@ -163,16 +324,16 @@ int main(int argc, char **argv) {
     while (1) {
         timeout.tv_sec = 120;
         timeout.tv_usec = 0;
-        FD_ZERO(&readfds);
+        // FD_ZERO(&readfds);
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(ASClientTCP, &readfds); // i.e VLC 9999
-        FD_SET(FSClientTCP, &readfds); // i.e REG OK
-        cout << "antes do while " << FSClientTCP << endl;
+        // FD_SET(FSClientTCP, &readfds); // i.e REG OK
+        // cout << "antes do while " << FSClientTCP << endl;
         maxfd = max(ASClientTCP, FSClientTCP);
-        cout << "max " << maxfd << endl;
+        // cout << "max " << maxfd << endl;
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
-        cout << "out " << out_fds << endl;
         switch (out_fds) {
+            cout << "out " << out_fds << endl;
             case 0:
                 printf("Timeout\n");
                 break;
