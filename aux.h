@@ -88,11 +88,19 @@ bool checkPass(int sfd, char *str) {
 }
 
 bool checkFilename(char *str) {
+    cout << str << endl;
     if (strlen(str) > 24)
         return false;
-    for (int i = 0; i < (int) strlen(str); i++)
-        if (!isalnum(str[i]) && str[i] != '.' && str[i] != '-' && str[i] != '_')
+    for (int i = 0; i < (int) strlen(str); i++) {
+        if (isalnum(str[i]) || str[i] == '.' || str[i] == '-' || str[i] == '_') {
+            cout << "entrou " << i << str[i] << endl;
+            continue;
+        }
+        else {
+            cout << "nao entrou " << i << "---" << str[i] << "---" << endl;
             return false;
+        }
+    }
     return true;
 }
 

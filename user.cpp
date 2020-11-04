@@ -35,8 +35,10 @@ void sendToServer(int sfd, char *buf) {
 }
 
 void closeFSConnection() {
+    cout << "dentro do close fs" << endl;
     FD_CLR(FSClientTCP, &readfds);
     close(FSClientTCP);
+    // FSClientTCP = -1;
 }
 
 void receiveFromServer(int sfd) {
@@ -107,11 +109,12 @@ void receiveFromServer(int sfd) {
         cout << "Authentication: successful" << endl;
     }
     if (!strcmp(command, "RLS ")) {
-        char aux[1];
+        char aux[2];
         while (1) {
             nRead = read(sfd, aux, 1);
             if (aux[0] == ' ' || aux[0] == '\n')
                 break;
+            aux[1] = '\0';
             strcat(nrFiles, aux);
             strcpy(aux, "\0");
         }
@@ -130,104 +133,37 @@ void receiveFromServer(int sfd) {
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        int nSpaces = 2;
-        for (int i = 1; i <= atoi(nrFiles); i++) {
+        for (int i = 1; i <= (int) atoi(nrFiles); i++) {
+            int nSpaces = 2;
+            cout << "no for" << endl;
             while (nSpaces) {
+                cout << "no space " << nSpaces << endl;
+                strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
-                if (aux[0] == ' ') {
-                    nSpaces--;
-                    if (nSpaces == 1) {
-                        strcat(filename, "\0");
-                        if (!checkFilename(filename)) {
-                            cout << "List: invalid filename" << endl;
-                            closeFSConnection();
-                            return;
-                        }
-                    }
-                }
+                cout << aux << endl;
                 if (aux[0] == '\n')
-                    break;
-                strcat(filename, aux);
-            }
-            nSpaces = 2;
-            cout << filename;
-        }
-    }
-}
-
-/*
-void receiveFromServer(int sfd) {
-    int n = read(sfd, receiverBuf, BUFFER);
-    if (n == -1) {
-        fprintf(stderr, "Failed read from server\n");
-        close(sfd);
-        exit(EXIT_FAILURE);
-    }
-    receiverBuf[n] = '\0';
-    if (!strncmp(receiverBuf, "RAU", 3))
-        sscanf(receiverBuf, "%s %s", command, TID);
-    if (!strncmp(receiverBuf, "RLS", 3)) {
-        sscanf(receiverBuf, "%s %s ", command, nrFiles);
-        int i = 4 + strlen(nrFiles) + 1;
-        int j = atoi(nrFiles);
-        int k = 0;
-        int nSpaces = 2;
-        char auxString[BUFFER] = "";
-        for (int l = 1; l <= j; l++) {
-            while (nSpaces) {
-                if (receiverBuf[i] == ' ' || receiverBuf[i] == '\0') {
+                    nSpaces = 0;
+                if (aux[0] == ' ')
                     nSpaces--;
-                    if (nSpaces == 1) {
-                        auxString[k] = '\0';
-                        if (!checkFilename(auxString)) {
-                            strcpy(receiverBuf, "\0");
-                            closeFSConnection();
-                            perror("Invalid filename\n");
-                            return;
-                        }
-                    }
+                    if (!nSpaces)
+                        break;
+                if (isalnum(aux[0]) || aux[0] == '.' || aux[0] == '-' || aux[0] == '_' || aux[0] == ' ') {
+                    aux[1] = '\0';
+                    strcat(filename, aux);
                 }
-                auxString[k++] = receiverBuf[i++];
+                else if (aux[0] == '\n')
+                    break;
             }
-            auxString[k] = '\0';
-            k = 0;
-            nSpaces = 2;
-            cout << l << " " << auxString << endl;
-            strcpy(auxString, "\0");
+            strcpy(aux, "\0");
+            strcat(filename, "\0");
+            cout << i << " " << filename << endl;
+            strcpy(filename, "\0");
+            cout << "nova iteracao" << endl;
         }
-        strcpy(receiverBuf, "\0");
         closeFSConnection();
-        return;
+        cout << "deposi do close" << endl;
     }
-    if (!strncmp(receiverBuf, "RRT", 3)) {
-        if (!strncmp(receiverBuf, "RRT EOF", 7))
-            perror("File not available");
-        else if (!strncmp(receiverBuf, "RRT NOK", 7))
-            perror("No content available");
-        else if (!strncmp(receiverBuf, "RRT OK", 6)) {
-            sscanf(receiverBuf, "%s %s %s ", command, status, filesize);
-            FILE *fp;
-            char recvFile[(int) atoi(filesize)];
-            for (int i = strlen(command) + strlen(status) + strlen(filesize) + 3, int k = 0; i < (int) (strlen(command) + strlen(status) + strlen(filesize) + 3 + atoi(filesize)); i++, k++)
-                recvFile[k++] = auxReceiverBuf[i];
-            fp = fopen(filename, "w");
-            int bytesLeft = atoi(filesize);
-            int loops = atoi(filesize) % 128;
-            while (loops > 1) {
-                fwrite(recvFile, 128, 1, fp);
-                loops--;
-                bytesLeft -= 128;
-            }
-            fwrite(recvFile, bytesLeft, 1, fp);
-        }
-        cout << receiverBuf;
-        closeFSConnection();
-        return;
-    }
-    cout << receiverBuf;
-    strcpy(receiverBuf, "\0");
 }
-*/
 
 void openFSConnection() {
     FSClientTCP = socket(AF_INET, SOCK_STREAM, 0);
@@ -256,9 +192,10 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        //const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
-        //sendToServer(ASClientTCP, createString(args, 5));
-        close(ASClientTCP);
+        cout << "no exittttt" << endl;
+        for (int fd = 0; fd < maxfd + 1; fd++)
+            if (FD_ISSET(fd, &readfds))
+                close(fd);
         exit(EXIT_SUCCESS);
     }
     else if (!strcmp(command, "login")) {
@@ -346,10 +283,12 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(ASClientTCP, &readfds)) {
+                    cout << "as" << endl;
                     receiveFromServer(ASClientTCP);
                     break;
                 }
                 if (FD_ISSET(FSClientTCP, &readfds)) {
+                    cout << "fs" << endl;
                     receiveFromServer(FSClientTCP);
                     break;
                 }
