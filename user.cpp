@@ -35,7 +35,6 @@ void sendToServer(int sfd, char *buf) {
 }
 
 void closeFSConnection() {
-    cout << "dentro do close fs" << endl;
     FD_CLR(FSClientTCP, &readfds);
     close(FSClientTCP);
     // FSClientTCP = -1;
@@ -110,6 +109,7 @@ void receiveFromServer(int sfd) {
     }
     if (!strcmp(command, "RLS ")) {
         char aux[2];
+        strcpy(nrFiles, "\0");
         while (1) {
             nRead = read(sfd, aux, 1);
             if (aux[0] == ' ' || aux[0] == '\n')
@@ -135,18 +135,23 @@ void receiveFromServer(int sfd) {
         }
         for (int i = 1; i <= (int) atoi(nrFiles); i++) {
             int nSpaces = 2;
-            cout << "no for" << endl;
+            // cout << "no for" << endl;
             while (nSpaces) {
-                cout << "no space " << nSpaces << endl;
+                // cout << "no space " << nSpaces << endl;
                 strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
-                cout << aux << endl;
+                if (nRead <= 0)
+                    // nSpaces = 0; 
+                    break;
+                // cout << aux << endl;
+                // cout << int(aux[0]) << endl;
                 if (aux[0] == '\n')
                     nSpaces = 0;
-                if (aux[0] == ' ')
+                if (aux[0] == ' ') {
                     nSpaces--;
                     if (!nSpaces)
                         break;
+                }
                 if (isalnum(aux[0]) || aux[0] == '.' || aux[0] == '-' || aux[0] == '_' || aux[0] == ' ') {
                     aux[1] = '\0';
                     strcat(filename, aux);
@@ -158,10 +163,10 @@ void receiveFromServer(int sfd) {
             strcat(filename, "\0");
             cout << i << " " << filename << endl;
             strcpy(filename, "\0");
-            cout << "nova iteracao" << endl;
+            // cout << "nova iteracao" << endl;
         }
         closeFSConnection();
-        cout << "deposi do close" << endl;
+        // cout << "deposi do close" << endl;
     }
 }
 
@@ -192,7 +197,6 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        cout << "no exittttt" << endl;
         for (int fd = 0; fd < maxfd + 1; fd++)
             if (FD_ISSET(fd, &readfds))
                 close(fd);
@@ -270,7 +274,7 @@ int main(int argc, char **argv) {
         // cout << "max " << maxfd << endl;
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
-            cout << "out " << out_fds << endl;
+        
             case 0:
                 printf("Timeout\n");
                 break;
@@ -283,12 +287,10 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(ASClientTCP, &readfds)) {
-                    cout << "as" << endl;
                     receiveFromServer(ASClientTCP);
                     break;
                 }
                 if (FD_ISSET(FSClientTCP, &readfds)) {
-                    cout << "fs" << endl;
                     receiveFromServer(FSClientTCP);
                     break;
                 }
