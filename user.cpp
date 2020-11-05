@@ -105,6 +105,7 @@ void receiveFromServer(int sfd) {
             close(sfd);
             exit(EXIT_FAILURE);
         }
+        TID[nRead - 1] = '\0';
         cout << "Authentication: successful" << endl;
     }
     if (!strcmp(command, "RLS ")) {
@@ -133,18 +134,15 @@ void receiveFromServer(int sfd) {
             close(sfd);
             exit(EXIT_FAILURE);
         }
+        
         for (int i = 1; i <= (int) atoi(nrFiles); i++) {
             int nSpaces = 2;
-            // cout << "no for" << endl;
             while (nSpaces) {
-                // cout << "no space " << nSpaces << endl;
                 strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
                 if (nRead <= 0)
-                    // nSpaces = 0; 
+                    // nSpaces = 0;
                     break;
-                // cout << aux << endl;
-                // cout << int(aux[0]) << endl;
                 if (aux[0] == '\n')
                     nSpaces = 0;
                 if (aux[0] == ' ') {
@@ -163,10 +161,56 @@ void receiveFromServer(int sfd) {
             strcat(filename, "\0");
             cout << i << " " << filename << endl;
             strcpy(filename, "\0");
-            // cout << "nova iteracao" << endl;
         }
         closeFSConnection();
-        // cout << "deposi do close" << endl;
+    }
+    if (!strcmp(command, "RRT ")) {
+        nRead = read(sfd, status, 3);
+        status[nRead] = '\0';
+        if (!strcmp(status, "OK ")) {
+            cout << "Retrieve: successful" << endl;
+            /*------Reads filesize-----*/
+            char c[2];
+            strcpy(filesize, "\0");
+            read(sfd, c, 1);
+            c[1] = '\0';
+            while (strcmp(c, " ")) {
+                strcat(filesize, c);
+                strcpy(c, "\0");
+                read(sfd, c, 1);
+                c[1] = '\0';
+            }
+            /*------Reads data------*/
+            
+        }
+        else {
+            char aux[2];
+            nRead = read(sfd, aux, 1);
+            if (!nRead) {
+                cout << "Retrieve: cloud not read" << endl;
+                close(sfd);
+                exit(EXIT_FAILURE);
+            }
+            strcat(status, aux);
+            if (!strcmp(status, "EOF\n"))
+                cout << "Retrieve: file not available" << endl;
+            else if (!strcmp(status, "NOK\n")) {
+                cout << "Retrieve: no content available in the FS for respective user" << endl;
+                close(sfd);
+                exit(EXIT_FAILURE);
+            }
+            else if (!strcmp(status, "INV\n")) {
+                cout << "Retrieve: AS validation error of the provided TID" << endl;
+                close(sfd);
+                exit(EXIT_FAILURE);
+            }
+            else if (!strcmp(status, "ERR\n")) {
+                cout << "Retrieve: request is not correctly formulated" << endl;
+                close(sfd);
+                exit(EXIT_FAILURE);
+            }
+        }
+        closeFSConnection();
     }
 }
 
@@ -269,9 +313,7 @@ int main(int argc, char **argv) {
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(ASClientTCP, &readfds); // i.e VLC 9999
         // FD_SET(FSClientTCP, &readfds); // i.e REG OK
-        // cout << "antes do while " << FSClientTCP << endl;
         maxfd = max(ASClientTCP, FSClientTCP);
-        // cout << "max " << maxfd << endl;
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
         

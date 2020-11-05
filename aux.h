@@ -20,9 +20,6 @@
 
 using namespace std;
 
-// socklen_t addrlenClient, addrlenServer;
-// struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
-// struct sockaddr_in addrClient, addrServer;
 struct timeval timeout;
 size_t len;
 ssize_t nread, n;
@@ -48,12 +45,6 @@ char RID[5] = "";
 char VC[5] = "";
 char TID[5] = "";
 char filename[128] = "";
-
-void append(char *s, char c) {
-    int len = strlen(s);
-    s[len] = c;
-    s[len + 1] = '\0';
-}
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
@@ -88,18 +79,13 @@ bool checkPass(int sfd, char *str) {
 }
 
 bool checkFilename(char *str) {
-    cout << str << endl;
     if (strlen(str) > 24)
         return false;
     for (int i = 0; i < (int) strlen(str); i++) {
-        if (isalnum(str[i]) || str[i] == '.' || str[i] == '-' || str[i] == '_') {
-            cout << "entrou " << i << str[i] << endl;
+        if (isalnum(str[i]) || str[i] == '.' || str[i] == '-' || str[i] == '_')
             continue;
-        }
-        else {
-            cout << "nao entrou " << i << "---" << str[i] << "---" << endl;
+        else
             return false;
-        }
     }
     return true;
 }
