@@ -168,7 +168,6 @@ void receiveFromServer(int sfd) {
         nRead = read(sfd, status, 3);
         status[nRead] = '\0';
         if (!strcmp(status, "OK ")) {
-            cout << "Retrieve: successful" << endl;
             /*------Reads filesize-----*/
             char c[2];
             strcpy(filesize, "\0");
@@ -180,8 +179,38 @@ void receiveFromServer(int sfd) {
                 read(sfd, c, 1);
                 c[1] = '\0';
             }
+
             /*------Reads data------*/
-            
+            FILE *file;
+            char buffer[1024];
+            int reading = 1024;
+            int auxFilesize = atoi(filesize);
+            file = fopen(Fname, "wb");
+            //fp = fopen("xxxxxx.jpg","ab");
+            if (atoi(filesize) < reading)
+                reading = atoi(filesize);
+            nRead = read(sfd, buffer, reading);
+            if (nRead < reading)
+                nRead -= 1;
+            buffer[nRead] = '\0';
+            auxFilesize -= nRead;
+            fwrite(buffer, sizeof(char), reading, file);
+            strcpy(buffer, "\0");
+            while (auxFilesize) {
+                fwrite(buffer, sizeof(char), reading, file);
+                strcpy(buffer, "\0");
+                nRead = read(sfd, buffer, reading);
+                buffer[nRead] = '\0';
+                if (nRead < reading) 
+                    nRead -= 1;
+                auxFilesize -= nRead;
+                if (auxFilesize < reading)
+                    reading = auxFilesize;
+            }
+            strcpy(buffer, "\n");
+            fwrite(buffer, sizeof(char), 1, file);
+            cout << "Retrieve: successful" << endl;
+            fclose(file);
         }
         else {
             char aux[2];
