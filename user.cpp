@@ -121,7 +121,6 @@ void receiveFromServer(int sfd) {
         if (!strcmp(nrFiles, "EOF")) {
             cout << "List: no files available" << endl;
             close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(nrFiles, "INV")) {
             cout << "List: AS validation error" << endl;
@@ -133,9 +132,9 @@ void receiveFromServer(int sfd) {
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        
         for (int i = 1; i <= (int) atoi(nrFiles); i++) {
             int nSpaces = 2;
+            strcpy(filename, "\0");
             while (nSpaces) {
                 strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
@@ -159,7 +158,6 @@ void receiveFromServer(int sfd) {
             strcpy(aux, "\0");
             strcat(filename, "\0");
             cout << i << " " << filename << endl;
-            strcpy(filename, "\0");
         }
         closeFSConnection();
     }
@@ -184,7 +182,6 @@ void receiveFromServer(int sfd) {
             int reading = 1024;
             int auxFilesize = atoi(filesize);
             file = fopen(Fname, "wb");
-            //fp = fopen("xxxxxx.jpg","ab");
             if (atoi(filesize) < reading)
                 reading = atoi(filesize);
             nRead = read(sfd, buffer, reading);
@@ -202,11 +199,10 @@ void receiveFromServer(int sfd) {
                 if (nRead < reading) 
                     nRead -= 1;
                 auxFilesize -= nRead;
+                strcat(buffer, "\n");
                 if (auxFilesize < reading)
                     reading = auxFilesize;
             }
-            strcpy(buffer, "\n");
-            fwrite(buffer, sizeof(char), 1, file);
             cout << "Retrieve: successful" << endl;
             fclose(file);
         }
@@ -240,6 +236,93 @@ void receiveFromServer(int sfd) {
         closeFSConnection();
     }
     if (!strcmp(command, "RUP ")) {
+        nRead = read(sfd, status, 5);
+        if (!strcmp(status, "OK\n"))
+            cout << "Upload: successful" << endl;
+        else if (!strcmp(status, "NOK\n")) {
+            cout << "Upload: not successful" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "DUP\n")) {
+            cout << "Upload: file already existed" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "FULL\n")) {
+            cout << "Upload: 15 files were previously uploaded by this User" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "INV\n")) {
+            cout << "Upload: AS validation error of the provided TID" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "ERR\n")) {
+            cout << "Upload: UPL request is not correctly formulated" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else {
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        closeFSConnection();
+    }
+    if (!strcmp(command, "RDL ")) {
+        nRead = read(sfd, status, 4);
+        if (!strcmp(status, "OK\n"))
+            cout << "Delete: successful" << endl;
+        else if (!strcmp(status, "EOF\n")) {
+            cout << "Delete: file not available" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "NOK\n")) {
+            cout << "Delete: UID does not exist" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "INV\n")) {
+            cout << "Delete: AS validation error of the provided TID" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "ERR\n")) {
+            cout << "Delete: DEL request is not correctly formulated" << endl;
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        else {
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
+        closeFSConnection();
+    }
+    if (!strcmp(command, "RRM ")) {
+        nRead = read(sfd, status, 5);
+        if (!strcmp(status, "OK\n"))
+            cout << "Remove: successful" << endl;
+        else if (!strcmp(status, "NOK\n")) {
+            cout << "Remove: UID does not exist" << endl;
+            close(sfd);
+            // exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "INV\n")) {
+            cout << "Remove: AS validation error of the provided TID" << endl;
+            close(sfd);
+            // exit(EXIT_FAILURE);
+        }
+        else if (!strcmp(status, "ERR\n")) {
+            cout << "Remove: REM request is not correctly formulated" << endl;
+            close(sfd);
+            // exit(EXIT_FAILURE);
+        }
+        else {
+            close(sfd);
+            exit(EXIT_FAILURE);
+        }
         closeFSConnection();
     }
 }
@@ -289,7 +372,6 @@ void processCommands() {
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(str, "%s %s %s", command, Fop, Fname);
-            cout << UID << "----" << endl;
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -315,51 +397,49 @@ void processCommands() {
         const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
         sendToServer(FSClientTCP, createString(args, 7));
     }
-    
     else if (!strcmp(command, "upload") || !strcmp(command, "u")) {
         openFSConnection();
         sscanf(str, "%s %s", command, filename);
         strcpy(Fname, filename);
-        FILE *file;
-        file = fopen(Fname, "rb");
+        FILE *file = fopen(Fname, "rb");
+        if (file == NULL) {
+            cout << "Upload: file does not exist" << endl;
+            closeFSConnection();
+            exit(EXIT_FAILURE);
+        }
 
         fseek(file, 0, SEEK_END);
         int auxFilesize = ftell(file);
+        rewind(file);
         itoa(auxFilesize, Fsize, 10);
 
-        cout << auxFilesize << "-aux" << endl;
-
-        const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, "\n"};
+        const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, " "};
         sendToServer(FSClientTCP, createString(args, 9));
         
         int reading = 1024;
-        cout << "antes do while" << endl;
-
-        nRead = fread(buffer, 1, reading, file);
-        if (nRead < reading)
-            nRead -= 1;
-        buffer[nRead] = '\0';
-        auxFilesize -= nRead;
-        fread(buffer, sizeof(char), reading, file);
-        strcpy(buffer, "\0");
+        if (auxFilesize < reading)
+            reading = auxFilesize;
         while (auxFilesize) {
-            cout << "dentro do while" << endl;
             nRead = fread(buffer, 1, reading, file);
             if (!nRead)
                 break;
-            cout << nRead << endl;
-            cout << buffer << endl;
-            buffer[nRead] = '\0';
-            cout << buffer << endl;
-            sendToServer(FSClientTCP, buffer);
             auxFilesize -= nRead;
-            cout << auxFilesize << endl;
-            break;
+            if (auxFilesize)
+                buffer[nRead] = '\0';
+            sendToServer(FSClientTCP, buffer);
         }
-        cout << "depois do while" << endl;
-        cout << buffer << endl;
-        buffer[auxFilesize] = '\n';
-        sendToServer(FSClientTCP, buffer);
+    }
+    else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
+        openFSConnection();
+        sscanf(str, "%s %s", command, filename);
+        strcpy(Fname, filename);
+        const char *args[7] = {"DEL ", UID, " ", TID, " ", Fname, "\n"};
+        sendToServer(FSClientTCP, createString(args, 7));
+    }
+    else if (!strcmp(command, "remove") || !strcmp(command, "x")) {
+        openFSConnection();
+        const char *args[5] = {"REM ", UID, " ", TID, "\n"};
+        sendToServer(FSClientTCP, createString(args, 5));
     }
 }
 

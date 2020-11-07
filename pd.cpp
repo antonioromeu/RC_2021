@@ -62,7 +62,6 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         receiverBuf[n] = '\0';
-        cout << receiverBuf;
         sscanf(receiverBuf, "%s ", command);
         if (!strcmp(command, "RRG")) {
             sscanf(receiverBuf, "%s %s", command, status);
@@ -93,8 +92,6 @@ char *receiveFromSocket(int socket) {
     if (socket == serverUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
         receiverBuf[n] = '\0';
-        // scanf(receiverBuf, "%s ", command);
-        // cout << receiverBuf << endl;
         if (n != -1)
             processASAnswer(receiverBuf);
     }
@@ -110,7 +107,6 @@ void processCommands() {
     fgets(str, 50, stdin);
     sscanf(str, "%s ", command);
     if (!strcmp(command, "exit")) {
-        cout << "process comands " << UID << endl;
         const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
         sendToServer(createString(args, 5), clientUDP);
     }
@@ -121,8 +117,6 @@ void processCommands() {
             close(serverUDP);
             exit(EXIT_FAILURE);
         }
-        // cout << UID << endl;
-        // cout << pass << endl;
         const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
         sendToServer(createString(args, 9), clientUDP);
     }
