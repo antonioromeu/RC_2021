@@ -337,17 +337,13 @@ void processCommands() {
 
         nRead = fread(buffer, 1, reading, file);
         if (nRead < reading)
-                nRead -= 1;
-            buffer[nRead] = '\0';
-            auxFilesize -= nRead;
-            fwrite(buffer, sizeof(char), reading, file);
-            strcpy(buffer, "\0");
-
+            nRead -= 1;
+        buffer[nRead] = '\0';
+        auxFilesize -= nRead;
+        fread(buffer, sizeof(char), reading, file);
+        strcpy(buffer, "\0");
         while (auxFilesize) {
             cout << "dentro do while" << endl;
-            
-
-
             nRead = fread(buffer, 1, reading, file);
             if (!nRead)
                 break;
@@ -365,7 +361,6 @@ void processCommands() {
         buffer[auxFilesize] = '\n';
         sendToServer(FSClientTCP, buffer);
     }
-    
 }
 
 int main(int argc, char **argv) {
