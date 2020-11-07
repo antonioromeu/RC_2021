@@ -61,12 +61,32 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         receiverBuf[n] = '\0';
-        cout << receiverBuf;
-        sscanf(receiverBuf, "%s %s", command, status);
-        if (!strcmp(command, "RUN") && !strcmp(status, "OK")) {
-            close(clientUDP);
-            close(serverUDP);
-            exit(EXIT_SUCCESS);
+        // cout << receiverBuf;
+        sscanf(receiverBuf, "%s ", command);
+        if (!strcmp(command, "RRG")) {
+            sscanf(receiverBuf, "%s %s", command, status);
+            if (!strcmp(status, "OK"))
+                cout << "Registration: successful" << endl;
+            else if (!strcmp(status, "NOK"))
+                cout << "Registration: not accepted" << endl;
+        }
+        if (!strcmp(command, "RVC")) {
+            sscanf(receiverBuf, "%s %s %s", command, UID, status);
+            if (!strcmp(status, "OK"))
+                cout << "Validation: valid user" << endl;
+            else if (!strcmp(status, "NOK"))
+                cout << "Validation: invalid user" << endl;
+        }
+        if (!strcmp(command, "RUN")) {
+            sscanf(receiverBuf, "%s %s", command, status);
+            if (!strcmp(status, "OK")) {
+                cout << "Unregister: successful" << endl;
+                close(clientUDP);
+                close(serverUDP);
+                exit(EXIT_SUCCESS);
+            }
+            if (!strcmp(status, "NOK"))
+                cout << "Unregister: not accepted" << endl;
         }
     }
     if (socket == serverUDP) {
@@ -94,7 +114,7 @@ void processCommands() {
     }
     else if (!strcmp(command, "reg")) {
         sscanf(str, "%s %s %s", command, UID, pass);
-        if (!checkUID(UID) || !checkPass(pass)) {
+        if (!checkUID(clientUDP, UID) || !checkPass(clientUDP, pass)) {
             close(clientUDP);
             close(serverUDP);
             exit(EXIT_FAILURE);

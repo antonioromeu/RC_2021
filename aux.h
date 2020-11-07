@@ -45,6 +45,7 @@ char RID[5] = "";
 char VC[5] = "";
 char TID[5] = "";
 char filename[128] = "";
+int maxfd;
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
