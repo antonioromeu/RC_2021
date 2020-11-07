@@ -45,11 +45,12 @@ void processASAnswer(char *buf) {
     if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D')
         sscanf(Fop, "%s %s", Fop, Fname);
     if (!strcmp(command, "VLC") && !strcmp(UID, recvUID)) {
+        cout << "Validaton code: " << VC << endl;
         const char *args[3] = {"RVC ", UID, " OK\n"};
         sendToServer(createString(args, 3), serverUDP);
     }
     else if (!strcmp(command, "VLC") && strcmp(UID, recvUID)) {
-        cout << "3 " << UID << endl;
+        cout << "Validaton: invalid user ID" << endl;
         const char *args[3] = {"RVC ", UID, " NOK\n"};
         sendToServer(createString(args, 3), serverUDP);
     }
@@ -61,7 +62,7 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         receiverBuf[n] = '\0';
-        // cout << receiverBuf;
+        cout << receiverBuf;
         sscanf(receiverBuf, "%s ", command);
         if (!strcmp(command, "RRG")) {
             sscanf(receiverBuf, "%s %s", command, status);
@@ -92,7 +93,8 @@ char *receiveFromSocket(int socket) {
     if (socket == serverUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
         receiverBuf[n] = '\0';
-        cout << receiverBuf;
+        // scanf(receiverBuf, "%s ", command);
+        // cout << receiverBuf << endl;
         if (n != -1)
             processASAnswer(receiverBuf);
     }
@@ -119,6 +121,8 @@ void processCommands() {
             close(serverUDP);
             exit(EXIT_FAILURE);
         }
+        // cout << UID << endl;
+        // cout << pass << endl;
         const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
         sendToServer(createString(args, 9), clientUDP);
     }
@@ -126,6 +130,7 @@ void processCommands() {
 
 int main(int argc, char **argv) {
     parseArgs(argc, argv);
+    int maxfd;
     
     clientUDP = socket(AF_INET, SOCK_DGRAM, 0);
     if (clientUDP == -1)

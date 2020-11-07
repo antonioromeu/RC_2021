@@ -93,7 +93,6 @@ void receiveFromServer(int sfd) {
             exit(EXIT_FAILURE);
         }
         else {
-            cout << "Error" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
@@ -122,7 +121,7 @@ void receiveFromServer(int sfd) {
         if (!strcmp(nrFiles, "EOF")) {
             cout << "List: no files available" << endl;
             close(sfd);
-            exit(EXIT_FAILURE);
+            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(nrFiles, "INV")) {
             cout << "List: AS validation error" << endl;
@@ -182,7 +181,6 @@ void receiveFromServer(int sfd) {
 
             /*------Reads data------*/
             FILE *file;
-            char buffer[1024];
             int reading = 1024;
             int auxFilesize = atoi(filesize);
             file = fopen(Fname, "wb");
@@ -241,6 +239,9 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
+    if (!strcmp(command, "RUP ")) {
+        closeFSConnection();
+    }
 }
 
 void openFSConnection() {
@@ -288,6 +289,7 @@ void processCommands() {
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(str, "%s %s %s", command, Fop, Fname);
+            cout << UID << "----" << endl;
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -313,6 +315,57 @@ void processCommands() {
         const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
         sendToServer(FSClientTCP, createString(args, 7));
     }
+    
+    else if (!strcmp(command, "upload") || !strcmp(command, "u")) {
+        openFSConnection();
+        sscanf(str, "%s %s", command, filename);
+        strcpy(Fname, filename);
+        FILE *file;
+        file = fopen(Fname, "rb");
+
+        fseek(file, 0, SEEK_END);
+        int auxFilesize = ftell(file);
+        itoa(auxFilesize, Fsize, 10);
+
+        cout << auxFilesize << "-aux" << endl;
+
+        const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, "\n"};
+        sendToServer(FSClientTCP, createString(args, 9));
+        
+        int reading = 1024;
+        cout << "antes do while" << endl;
+
+        nRead = fread(buffer, 1, reading, file);
+        if (nRead < reading)
+                nRead -= 1;
+            buffer[nRead] = '\0';
+            auxFilesize -= nRead;
+            fwrite(buffer, sizeof(char), reading, file);
+            strcpy(buffer, "\0");
+
+        while (auxFilesize) {
+            cout << "dentro do while" << endl;
+            
+
+
+            nRead = fread(buffer, 1, reading, file);
+            if (!nRead)
+                break;
+            cout << nRead << endl;
+            cout << buffer << endl;
+            buffer[nRead] = '\0';
+            cout << buffer << endl;
+            sendToServer(FSClientTCP, buffer);
+            auxFilesize -= nRead;
+            cout << auxFilesize << endl;
+            break;
+        }
+        cout << "depois do while" << endl;
+        cout << buffer << endl;
+        buffer[auxFilesize] = '\n';
+        sendToServer(FSClientTCP, buffer);
+    }
+    
 }
 
 int main(int argc, char **argv) {
@@ -345,7 +398,6 @@ int main(int argc, char **argv) {
         maxfd = max(ASClientTCP, FSClientTCP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
-        
             case 0:
                 printf("Timeout\n");
                 break;
