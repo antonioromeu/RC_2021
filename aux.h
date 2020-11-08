@@ -15,39 +15,32 @@
 #include <time.h>
 #include <fstream>
 
-#define BUFFER 500
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
 using namespace std;
 
 struct timeval timeout;
-size_t len;
-ssize_t nread, n;
-fd_set inputs, testfds, rfds, wfds, pdfds, readfds, writefds;
-int i, out_fds, sfd, s, errocode, j, newfd, counter;
-char str[128] = "";
-char senderBuf[BUFFER] = "";
-char receiverBuf[BUFFER] = "";
-char PDIP[50] = "";
+fd_set readfds;
+int out_fds, sfd;
+char PDIP[50];
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
 char ASport[6] = "58032";
-char command[128] = "";
-char UID[6] = "";
-char recvUID[6] = "";
-char pass[9] = "";
-char buffer[1024] = "";
+char command[128];
+char UID[6];
+char recvUID[6];
+char pass[9];
+char buffer[1024];
 char FSIP[50] = "localhost";
 char FSport[6]= "59032";
-char Fop[50] = "";
-char Fname[50] = "";
-char RID[5] = "";
-char VC[5] = "";
-char TID[5] = "";
-char filename[128] = "";
-char Fsize[10] = "";
-// int maxfd;
+char Fop[50];
+char Fname[50];
+char RID[5];
+char VC[5];
+char TID[5];
+char filename[128];
+char Fsize[10];
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
@@ -57,12 +50,9 @@ bool isNumeric(char *str) {
 }
 
 bool isAlphanumeric(char *str) {
-    for (int i = 0; i < (int) strlen(str); i++) {
-        cout << str[i] << "---" << endl;
+    for (int i = 0; i < (int) strlen(str); i++)
         if (!isalnum(str[i]))
             return false;
-    }
-    cout << "nao da falso" << endl;
     return true;
 }
 
@@ -87,13 +77,13 @@ bool checkFilename(char *str) {
 }
 
 char* createString(const char **args, int len) {
-    strcpy(senderBuf, "\0");
+    strcpy(buffer, "\0");
     for (int i = 0; i < len; i++)
-        strcat(senderBuf, args[i]);
-    return senderBuf;
+        strcat(buffer, args[i]);
+    return buffer;
 }
 
-void reverse(char str[], int length) { 
+void reverse(char *str, int length) { 
     int start = 0; 
     int end = length -1; 
     while (start < end) { 
@@ -103,7 +93,7 @@ void reverse(char str[], int length) {
     } 
 } 
 
-char* itoa(int num, char* str, int base) {
+char* itoa(int num, char *str, int base) {
     int i = 0;
     bool isNegative = false;
 

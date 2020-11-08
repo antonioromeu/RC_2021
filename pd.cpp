@@ -1,15 +1,14 @@
 #include "aux.h"
 
+#define BUFSIZE 1024
+
 int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
-struct addrinfo hintsClient;
-struct addrinfo hintsServer;
-struct addrinfo *resClient;
-struct addrinfo *resServer;
-struct sockaddr_in addrClient;
-struct sockaddr_in addrServer;
+struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
+struct sockaddr_in addrClient, addrServer;
 
 char status[4] = "";
+int s;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
@@ -27,18 +26,18 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
-void sendToServer(char *buf, int socket) {
+void sendToServer(int socket, char *buf) {
     int n = 0;
-    cout << buf << endl;
     if (socket == clientUDP) 
-        n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);     //target
+        n = sendto(socket, buf, BUFSIZE, 0, resClient->ai_addr, resClient->ai_addrlen);     //target
     else if (socket == serverUDP)
-        n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrServer, addrlenServer);     //target
+        n = sendto(socket, buf, BUFSIZE, 0, (struct sockaddr*) &addrServer, addrlenServer);     //target
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(socket);
         exit(EXIT_FAILURE);
     }
+    memset(buf, '\0', strlen(buf));
 }
 
 void processASAnswer(char *buf) {
@@ -48,86 +47,80 @@ void processASAnswer(char *buf) {
     if (!strcmp(command, "VLC") && !strcmp(UID, recvUID)) {
         cout << "Validaton code: " << VC << endl;
         const char *args[3] = {"RVC ", UID, " OK\n"};
-        sendToServer(createString(args, 3), serverUDP);
+        sendToServer(serverUDP, createString(args, 3));
     }
     else if (!strcmp(command, "VLC") && strcmp(UID, recvUID)) {
         cout << "Validaton: invalid user ID" << endl;
         const char *args[3] = {"RVC ", UID, " NOK\n"};
-        sendToServer(createString(args, 3), serverUDP);
+        sendToServer(serverUDP, createString(args, 3));
     }
 }
 
 char *receiveFromSocket(int socket) {
+    cout << "entrou" << endl;
     int n = 0;
-    strcpy(receiverBuf, "\0");
+    memset(buffer, '\0', strlen(buffer));
     if (socket == clientUDP) {
-        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
-        // receiverBuf[n] = '\0';
-        cout << receiverBuf << "----" << endl;
-        sscanf(receiverBuf, "%s ", command);
-        cout << receiverBuf << "---" << endl;
+        n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
+        buffer[n] = '\0';
+        cout << buffer << endl;
+        sscanf(buffer, "%s ", command);
         if (!strcmp(command, "RRG")) {
-            sscanf(receiverBuf, "%s %s", command, status);
-            cout << status << "----" << endl;
-            cout << strlen(status) << endl;
-            if (!strcmp(status, "OK\0"))
+            sscanf(buffer, "%s %s", command, status);
+            if (!strcmp(status, "OK"))
                 cout << "Registration: successful" << endl;
-            else if (!strcmp(status, "NOK\0"))
+            else if (!strcmp(status, "NOK"))
                 cout << "Registration: not accepted" << endl;
         }
         if (!strcmp(command, "RVC")) {
-            sscanf(receiverBuf, "%s %s %s", command, UID, status);
-            if (!strcmp(status, "OK\0"))
+            sscanf(buffer, "%s %s %s", command, UID, status);
+            if (!strcmp(status, "OK"))
                 cout << "Validation: valid user" << endl;
-            else if (!strcmp(status, "NOK\0"))
+            else if (!strcmp(status, "NOK"))
                 cout << "Validation: invalid user" << endl;
         }
         if (!strcmp(command, "RUN")) {
-            sscanf(receiverBuf, "%s %s", command, status);
-            if (!strcmp(status, "OK\0")) {
+            sscanf(buffer, "%s %s", command, status);
+            if (!strcmp(status, "OK")) {
                 cout << "Unregister: successful" << endl;
                 close(clientUDP);
                 close(serverUDP);
                 exit(EXIT_SUCCESS);
             }
-            if (!strcmp(status, "NOK\0"))
+            if (!strcmp(status, "NOK"))
                 cout << "Unregister: not accepted" << endl;
         }
     }
     if (socket == serverUDP) {
-        n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
-        receiverBuf[n] = '\0';
+        n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
+        buffer[n] = '\0';
         if (n != -1)
-            processASAnswer(receiverBuf);
+            processASAnswer(buffer);
     }
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
         close(socket); 
         exit(EXIT_FAILURE);
     }
-    return receiverBuf;
+    return buffer;
 }
 
 void processCommands() {
-    fgets(str, 50, stdin);
-    sscanf(str, "%s ", command);
+    fgets(buffer, 50, stdin);
+    sscanf(buffer, "%s ", command);
     if (!strcmp(command, "exit")) {
         const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
-        sendToServer(createString(args, 5), clientUDP);
+        sendToServer(clientUDP, createString(args, 5));
     }
     else if (!strcmp(command, "reg")) {
-        sscanf(str, "%s %s %s", command, UID, pass);
+        sscanf(buffer, "%s %s %s", command, UID, pass);
         if (!checkUID(UID))
             cout << "Register: invalid UID" << endl;
-        if (!checkPass(pass))
+        else if (!checkPass(pass))
             cout << "Register: invalid password" << endl;
         else {
-            cout << UID << "-" << endl;
-            cout << pass << "-" << endl;
-            cout << PDIP << "-" << endl;
-            cout << PDport << "-" << endl;
             const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-            sendToServer(createString(args, 9), clientUDP);
+            sendToServer(clientUDP, createString(args, 9));
         }
     }
 }
@@ -177,6 +170,7 @@ int main(int argc, char **argv) {
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(clientUDP, &readfds); // i.e REG OK
         FD_SET(serverUDP, &readfds); // i.e VLC 9999
+        cout << serverUDP << "----" << endl;
         maxfd = max(clientUDP, serverUDP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
@@ -196,6 +190,7 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(serverUDP, &readfds)) {
+                    cout << "aqui" << endl;
                     receiveFromSocket(serverUDP);
                     break;
                 }

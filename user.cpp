@@ -5,7 +5,7 @@ struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
 char status[6];
 char nrFiles[4];
 char filesize[128];
-int nRead;
+int nRead, s;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -30,14 +30,12 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    // cout << buf << endl;
-    strcpy(buf, "\0");
+    memset(buf, '\0', strlen(buf));
 }
 
 void closeFSConnection() {
     FD_CLR(FSClientTCP, &readfds);
     close(FSClientTCP);
-    // FSClientTCP = -1;
 }
 
 void receiveFromServer(int sfd) {
@@ -109,7 +107,7 @@ void receiveFromServer(int sfd) {
     }
     if (!strcmp(command, "RLS ")) {
         char aux[2];
-        strcpy(nrFiles, "\0");
+        memset(nrFiles, '\0', strlen(nrFiles));
         while (1) {
             nRead = read(sfd, aux, 1);
             if (aux[0] == ' ' || aux[0] == '\n')
@@ -133,8 +131,8 @@ void receiveFromServer(int sfd) {
             exit(EXIT_FAILURE);
         }
         for (int i = 1; i <= (int) atoi(nrFiles); i++) {
-            int nSpaces = 2;
-            strcpy(filename, "\0");
+            int nSpaces = 2;    
+            memset(filename, '\0', strlen(filename));
             while (nSpaces) {
                 strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
@@ -156,6 +154,7 @@ void receiveFromServer(int sfd) {
                     break;
             }
             strcpy(aux, "\0");
+            memset(aux, '\0', strlen(aux));
             strcat(filename, "\0");
             cout << i << " " << filename << endl;
         }
@@ -166,45 +165,25 @@ void receiveFromServer(int sfd) {
         status[nRead] = '\0';
         if (!strcmp(status, "OK ")) {
             /*------Reads filesize-----*/
-            char c[2];
-            strcpy(filesize, "\0");
-            read(sfd, c, 1);
-            c[1] = '\0';
-            while (strcmp(c, " ")) {
-                strcat(filesize, c);
-                strcpy(c, "\0");
-                read(sfd, c, 1);
-                c[1] = '\0';
-            }
+            memset(filesize, '\0', strlen(filesize));
+            char c;
+            do {
+                read(sfd, &c, 1);
+                strncat(filesize, &c, 1);
+            } while (isdigit(c));
 
             /*------Reads data------*/
-            FILE *file;
             int reading = 1024;
-            int auxFilesize = atoi(filesize);
-            file = fopen(Fname, "wb");
-            if (atoi(filesize) < reading)
-                reading = atoi(filesize);
-            nRead = read(sfd, buffer, reading);
-            if (nRead < reading)
-                nRead -= 1;
-            buffer[nRead] = '\0';
-            auxFilesize -= nRead;
-            fwrite(buffer, sizeof(char), reading, file);
-            strcpy(buffer, "\0");
-            while (auxFilesize) {
-                fwrite(buffer, sizeof(char), reading, file);
-                strcpy(buffer, "\0");
+            int intFilesize = atoi(filesize);;
+            FILE *file = fopen(Fname, "wb");
+            do {
+                memset(buffer, '\0', strlen(buffer));
                 nRead = read(sfd, buffer, reading);
-                buffer[nRead] = '\0';
-                if (nRead < reading) 
-                    nRead -= 1;
-                auxFilesize -= nRead;
-                strcat(buffer, "\n");
-                if (auxFilesize < reading)
-                    reading = auxFilesize;
-            }
-            cout << "Retrieve: successful" << endl;
+                intFilesize -= nRead;
+                fwrite(buffer, 1, nRead, file);
+            } while (intFilesize > 0);
             fclose(file);
+            cout << "Retrieve: successful" << endl;
         }
         else {
             char aux[2];
@@ -351,8 +330,8 @@ void openFSConnection() {
 }
 
 void processCommands() {
-    fgets(str, 50, stdin);
-    sscanf(str, "%s ", command);
+    fgets(buffer, 50, stdin);
+    sscanf(buffer, "%s ", command);
     if (!strcmp(command, "exit")) {
         for (int fd = 0; fd < maxfd + 1; fd++)
             if (FD_ISSET(fd, &readfds))
@@ -360,18 +339,18 @@ void processCommands() {
         exit(EXIT_SUCCESS);
     }
     else if (!strcmp(command, "login")) {
-        sscanf(str, "%s %s %s", command, UID, pass);
-        if (!checkUID(ASClientTCP, UID) || !checkPass(ASClientTCP, pass))
+        sscanf(buffer, "%s %s %s", command, UID, pass);
+        if (!checkUID(UID) || !checkPass(pass))
             exit(EXIT_FAILURE);
         const char *args[5] = {"LOG ", UID, " ", pass, "\n"};
         sendToServer(ASClientTCP, createString(args, 5));
     }
     else if (!strcmp(command, "req")) {
-        sscanf(str, "%s %s", command, Fop);
+        sscanf(buffer, "%s %s", command, Fop);
         srand(time(0));
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-            sscanf(str, "%s %s %s", command, Fop, Fname);
+            sscanf(buffer, "%s %s %s", command, Fop, Fname);
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -381,7 +360,7 @@ void processCommands() {
         }
     }
     else if (!strcmp(command, "val")) {
-        sscanf(str, "%s %s", command, VC);
+        sscanf(buffer, "%s %s", command, VC);
         const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
         sendToServer(ASClientTCP, createString(args, 7));
     }
@@ -392,14 +371,14 @@ void processCommands() {
     }
     else if (!strcmp(command, "retrieve") || !strcmp(command, "r")) {
         openFSConnection();
-        sscanf(str, "%s %s", command, filename);
+        sscanf(buffer, "%s %s", command, filename);
         strcpy(Fname, filename);
         const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
         sendToServer(FSClientTCP, createString(args, 7));
     }
     else if (!strcmp(command, "upload") || !strcmp(command, "u")) {
         openFSConnection();
-        sscanf(str, "%s %s", command, filename);
+        sscanf(buffer, "%s %s", command, filename);
         strcpy(Fname, filename);
         FILE *file = fopen(Fname, "rb");
         if (file == NULL) {
@@ -431,7 +410,7 @@ void processCommands() {
     }
     else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
         openFSConnection();
-        sscanf(str, "%s %s", command, filename);
+        sscanf(buffer, "%s %s", command, filename);
         strcpy(Fname, filename);
         const char *args[7] = {"DEL ", UID, " ", TID, " ", Fname, "\n"};
         sendToServer(FSClientTCP, createString(args, 7));

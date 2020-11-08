@@ -1,20 +1,104 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <iostream>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include "aux.h"
 
-#define BUFFER 500
-#define GN 32
+int afd = 0, UDP, TCP, s;
+socklen_t addrlenUDP, addrlenTCP;
+struct addrinfo hintsUDP, hintsTCP, *resUDP, *resTCP;
+struct sockaddr_in addrUDP, addrTCP;
 
-using namespace std;
-char ASport[BUFFER] = "58032" ;
+void parseArgs(int argc, char *argv[]) {
+    if (argc < 1 || argc > 9) {
+        fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp(argv[i], "-p"))
+            strcpy(ASport, argv[i]);
+    }
+}
 
+void *receiveFromSocket(int socket) {
+    int n = 0;
+    memset(buffer, '\0', strlen(buffer));
+}
+
+int main(int argc, char **argv) {
+    parseArgs(argc, argv);
+    int maxfd;
+
+    /*------------UDP Socket---------*/
+    UDP = socket(AF_INET, SOCK_DGRAM, 0);
+    if (UDP == -1)
+        exit(1);
+    memset(&hintsUDP, 0, sizeof hintsUDP);
+    hintsUDP.ai_family = AF_INET;
+    hintsUDP.ai_socktype = SOCK_DGRAM;
+    hintsUDP.ai_flags = AI_PASSIVE;
+    s = getaddrinfo(NULL, ASport, &hintsUDP, &resUDP);
+    if (s != 0) {
+        cout << "aqui" << endl;
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(UDP);
+        exit(EXIT_FAILURE);
+    }
+    addrlenUDP = sizeof(addrUDP);
+    
+    if (bind(UDP, resUDP->ai_addr, resUDP->ai_addrlen) < 0 ) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    /*------------TCP Socket---------*/
+    TCP = socket(AF_INET, SOCK_STREAM, 0);
+    if (TCP == -1)
+        exit(1);
+    memset(&hintsTCP, 0, sizeof hintsTCP);
+    hintsTCP.ai_family = AF_INET;
+    hintsTCP.ai_socktype = SOCK_STREAM;
+    hintsTCP.ai_flags = AI_PASSIVE;
+
+    s = getaddrinfo(NULL, ASport, &hintsTCP, &resTCP);
+    if (s != 0) {
+        cout << "a seguir" << endl;
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(TCP);
+        exit(EXIT_FAILURE);
+    }
+    addrlenTCP = sizeof(addrTCP);
+
+    if (bind(TCP, resTCP->ai_addr, resTCP->ai_addrlen) < 0) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    while (1) {
+        timeout.tv_sec = 120;
+        timeout.tv_usec = 0;
+        FD_ZERO(&readfds);
+        FD_SET(UDP, &readfds);
+        FD_SET(TCP, &readfds);
+        maxfd = max(UDP, TCP);
+        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        switch (out_fds) {
+            case 0:
+                printf("Timeout\n");
+                break;
+            case -1:
+                perror("Select\n");
+                exit(EXIT_FAILURE);
+            default:
+                if (FD_ISSET(UDP, &readfds)) {
+                    // receiveFromServer(UDP);
+                    break;
+                }
+                if (FD_ISSET(TCP, &readfds)) {
+                    // receiveFromServer(TCP);
+                    break;
+                }
+        }
+    }
+}
+
+/*
 int create_udp(struct addrinfo hints, struct addrinfor **res){
     int fd, n;
      memset(&hints, 0, sizeof hints);
@@ -61,17 +145,16 @@ int create_TCP(struct addrinfo hints, struct addrinfo **res) {
 
 int main(int argc, char *argv[]) {
     struct addrinfo hints, *res;
-    /*int fd_tcp, fd_udp;
+    int fd_tcp, fd_udp;
     struct addrinfo hints_tcp, hints_udp, *res_tcp, *res_udp;
-    */
     int sfd, s;
     struct sockaddr_in addr;
     socklen_t addrlen;
     ssize_t n, nread;
     char buf[BUFFER], ASport[BUFFER];
-    /*variavel global*/
+    variavel global
     bool verbose = false;
-    /*int fd_udp;*/
+    int fd_udp;
 
     if (argc < 1) {
         fprintf(stderr, "Usage: %s port\n", argv[0]);
@@ -88,9 +171,8 @@ int main(int argc, char *argv[]) {
 
     if ((sfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
         exit(1);
-/* fd_tcp = create_TCP(hints_tcp, &res_tcp);
+    fd_tcp = create_TCP(hints_tcp, &res_tcp);
     fd_udp = create_UDP(hints_udp, &res_udp);
-*/
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
@@ -115,3 +197,4 @@ int main(int argc, char *argv[]) {
         //    exit(1);
     }
 }
+*/
