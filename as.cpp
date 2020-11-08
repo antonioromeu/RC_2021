@@ -1,6 +1,8 @@
 #include "aux.h"
 
 int afd = 0, UDP, TCP, s;
+char newdir[12] = "USERS/";
+char passFile[50];
 socklen_t addrlenUDP, addrlenTCP;
 struct addrinfo hintsUDP, hintsTCP, *resUDP, *resTCP;
 struct sockaddr_in addrUDP, addrTCP;
@@ -16,15 +18,43 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
-void *receiveFromSocket(int socket) {
-    int n = 0;
+void receiveUDP(int socket) {
+    int nRead;
     memset(buffer, '\0', strlen(buffer));
+    nRead = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrUDP, &addrlenUDP);
+    buffer[nRead] = '\0';
+    sscanf(buffer, "%s ", command);
+    if (!strcmp(command, "REG")) {
+        sscanf(buffer, "%s %s %s %s %s", command, UID, pass, PDIP, PDport);
+        if (!checkDir(UID)) {
+            strcat(newdir, UID);
+            strcat(newdir, "\0");
+            if (!mkdir(newdir, 0777))
+                cout << "USERS/" << UID << " directory created" << endl;
+            else {
+                cout << "Unable to create USERS/" << UID << " directory" << endl;
+                close(socket);
+                return;
+            }
+        }
+        strcpy(passFile, newdir);
+        strcat(passFile, "/");
+        strcat(passFile, UID);
+        strcat(passFile, "_pass.txt");
+        FILE *UIDFile = fopen(passFile, "w");
+    }
 }
 
 int main(int argc, char **argv) {
     parseArgs(argc, argv);
     int maxfd;
-
+    int check = mkdir("USERS", 0777); 
+    if (!check)
+        cout << "USERS directory created" << endl;
+    else {
+        cout << "Unable to create USERS directory" << endl;
+        exit(EXIT_FAILURE);
+    }
     /*------------UDP Socket---------*/
     UDP = socket(AF_INET, SOCK_DGRAM, 0);
     if (UDP == -1)
@@ -35,7 +65,6 @@ int main(int argc, char **argv) {
     hintsUDP.ai_flags = AI_PASSIVE;
     s = getaddrinfo(NULL, ASport, &hintsUDP, &resUDP);
     if (s != 0) {
-        cout << "aqui" << endl;
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         close(UDP);
         exit(EXIT_FAILURE);
@@ -48,7 +77,7 @@ int main(int argc, char **argv) {
     }
 
     /*------------TCP Socket---------*/
-    TCP = socket(AF_INET, SOCK_STREAM, 0);
+   /* TCP = socket(AF_INET, SOCK_STREAM, 0);
     if (TCP == -1)
         exit(1);
     memset(&hintsTCP, 0, sizeof hintsTCP);
@@ -68,7 +97,7 @@ int main(int argc, char **argv) {
     if (bind(TCP, resTCP->ai_addr, resTCP->ai_addrlen) < 0) {
         perror("Bind failed");
         exit(EXIT_FAILURE);
-    }
+    }*/
 
     while (1) {
         timeout.tv_sec = 120;
@@ -87,7 +116,7 @@ int main(int argc, char **argv) {
                 exit(EXIT_FAILURE);
             default:
                 if (FD_ISSET(UDP, &readfds)) {
-                    // receiveFromServer(UDP);
+                    receiveUDP(UDP);
                     break;
                 }
                 if (FD_ISSET(TCP, &readfds)) {

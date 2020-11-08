@@ -1,7 +1,5 @@
 #include "aux.h"
 
-#define BUFSIZE 1024
-
 int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
 struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
@@ -57,13 +55,11 @@ void processASAnswer(char *buf) {
 }
 
 char *receiveFromSocket(int socket) {
-    cout << "entrou" << endl;
     int n = 0;
     memset(buffer, '\0', strlen(buffer));
     if (socket == clientUDP) {
         n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         buffer[n] = '\0';
-        cout << buffer << endl;
         sscanf(buffer, "%s ", command);
         if (!strcmp(command, "RRG")) {
             sscanf(buffer, "%s %s", command, status);
@@ -170,7 +166,6 @@ int main(int argc, char **argv) {
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(clientUDP, &readfds); // i.e REG OK
         FD_SET(serverUDP, &readfds); // i.e VLC 9999
-        cout << serverUDP << "----" << endl;
         maxfd = max(clientUDP, serverUDP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
         switch (out_fds) {
@@ -190,7 +185,6 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(serverUDP, &readfds)) {
-                    cout << "aqui" << endl;
                     receiveFromSocket(serverUDP);
                     break;
                 }

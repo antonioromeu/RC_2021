@@ -30,6 +30,7 @@ void sendToServer(int sfd, char *buf) {
         close(sfd); 
         exit(EXIT_FAILURE);
     }
+    // cout << buf << endl;
     memset(buf, '\0', strlen(buf));
 }
 
@@ -96,13 +97,13 @@ void receiveFromServer(int sfd) {
         }
     }
     if (!strcmp(command, "RAU ")) {
-        nRead = read(sfd, TID, 5);
+        nRead = read(sfd, TID, 4);
+        TID[nRead] = '\0';
         if (!strcmp(TID, "0")) {
             cout << "Authentication: failed" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        TID[nRead - 1] = '\0';
         cout << "Authentication: successful" << endl;
     }
     if (!strcmp(command, "RLS ")) {
@@ -280,7 +281,7 @@ void receiveFromServer(int sfd) {
         closeFSConnection();
     }
     if (!strcmp(command, "RRM ")) {
-        nRead = read(sfd, status, 4);
+        read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
             cout << "Remove: successful" << endl;
         else if (!strcmp(status, "NOK\n")) {

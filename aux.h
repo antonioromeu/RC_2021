@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +17,7 @@
 #include <time.h>
 #include <fstream>
 
+#define BUFSIZE 1024
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
@@ -118,3 +121,25 @@ char* itoa(int num, char *str, int base) {
 
     return str; 
 } 
+
+bool checkDir(char *subdir) {
+    DIR *d;
+    struct dirent *dir;
+    d = opendir("/USERS");
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if (!strcmp(dir->d_name, subdir)) {
+                closedir(d);
+                return true;
+            }
+        }
+        closedir(d);
+        return false;
+    }
+    return false;
+}
+
+void createFiles(const char**args, int len, FILE *file, char *newdir) {
+//PARA O ROMEU <3
+    
+}
