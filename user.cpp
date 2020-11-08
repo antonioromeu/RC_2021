@@ -301,7 +301,7 @@ void receiveFromServer(int sfd) {
         closeFSConnection();
     }
     if (!strcmp(command, "RRM ")) {
-        nRead = read(sfd, status, 5);
+        nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
             cout << "Remove: successful" << endl;
         else if (!strcmp(status, "NOK\n")) {

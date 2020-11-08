@@ -51,34 +51,27 @@ char Fsize[10] = "";
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
-        if (isdigit(str[i]) == false)
+        if (!isdigit(str[i]))
             return false;
     return true;
 }
 
 bool isAlphanumeric(char *str) {
-    for (int i = 0; i < (int) strlen(str); i++)
-        if (isalnum(str[i]) == false)
+    for (int i = 0; i < (int) strlen(str); i++) {
+        cout << str[i] << "---" << endl;
+        if (!isalnum(str[i]))
             return false;
+    }
+    cout << "nao da falso" << endl;
     return true;
 }
 
-bool checkUID(int sfd, char *str) {
-    if (strlen(str) != 5 || !isNumeric(str)) {  
-        perror("UID Error");
-        close(sfd);
-        return false;
-    }
-    return true;
+bool checkUID(char *str) {
+    return (strlen(str) == 5 && isNumeric(str));
 }
 
-bool checkPass(int sfd, char *str) {
-    if (strlen(str) != 8 || !isAlphanumeric(str)) {
-        perror ("Pass Error");
-        close(sfd);
-        return false;
-    }
-    return true;
+bool checkPass(char *str) {
+    return (strlen(str) == 8 && isAlphanumeric(str));
 }
 
 bool checkFilename(char *str) {

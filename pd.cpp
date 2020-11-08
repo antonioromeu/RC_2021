@@ -29,6 +29,7 @@ void parseArgs(int argc, char *argv[]) {
 
 void sendToServer(char *buf, int socket) {
     int n = 0;
+    cout << buf << endl;
     if (socket == clientUDP) 
         n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);     //target
     else if (socket == serverUDP)
@@ -62,9 +63,13 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         receiverBuf[n] = '\0';
+        cout << receiverBuf << "----" << endl;
         sscanf(receiverBuf, "%s ", command);
+        cout << receiverBuf << "---" << endl;
         if (!strcmp(command, "RRG")) {
             sscanf(receiverBuf, "%s %s", command, status);
+            cout << status << "----" << endl;
+            cout << strlen(status) << endl;
             if (!strcmp(status, "OK"))
                 cout << "Registration: successful" << endl;
             else if (!strcmp(status, "NOK"))
@@ -112,13 +117,18 @@ void processCommands() {
     }
     else if (!strcmp(command, "reg")) {
         sscanf(str, "%s %s %s", command, UID, pass);
-        if (!checkUID(clientUDP, UID) || !checkPass(clientUDP, pass)) {
-            close(clientUDP);
-            close(serverUDP);
-            exit(EXIT_FAILURE);
+        if (!checkUID(UID))
+            cout << "Register: invalid UID" << endl;
+        if (!checkPass(pass))
+            cout << "Register: invalid password" << endl;
+        else {
+            cout << UID << "-" << endl;
+            cout << pass << "-" << endl;
+            cout << PDIP << "-" << endl;
+            cout << PDport << "-" << endl;
+            const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+            sendToServer(createString(args, 9), clientUDP);
         }
-        const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-        sendToServer(createString(args, 9), clientUDP);
     }
 }
 
