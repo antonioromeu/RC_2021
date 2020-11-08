@@ -9,7 +9,7 @@ struct addrinfo *resServer;
 struct sockaddr_in addrClient;
 struct sockaddr_in addrServer;
 
-char status[3] = "";
+char status[4] = "";
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
@@ -62,7 +62,7 @@ char *receiveFromSocket(int socket) {
     strcpy(receiverBuf, "\0");
     if (socket == clientUDP) {
         n = recvfrom(socket, receiverBuf, BUFFER, 0, (struct sockaddr*) &addrClient, &addrlenClient);
-        receiverBuf[n] = '\0';
+        // receiverBuf[n] = '\0';
         cout << receiverBuf << "----" << endl;
         sscanf(receiverBuf, "%s ", command);
         cout << receiverBuf << "---" << endl;
@@ -70,27 +70,27 @@ char *receiveFromSocket(int socket) {
             sscanf(receiverBuf, "%s %s", command, status);
             cout << status << "----" << endl;
             cout << strlen(status) << endl;
-            if (!strcmp(status, "OK"))
+            if (!strcmp(status, "OK\0"))
                 cout << "Registration: successful" << endl;
-            else if (!strcmp(status, "NOK"))
+            else if (!strcmp(status, "NOK\0"))
                 cout << "Registration: not accepted" << endl;
         }
         if (!strcmp(command, "RVC")) {
             sscanf(receiverBuf, "%s %s %s", command, UID, status);
-            if (!strcmp(status, "OK"))
+            if (!strcmp(status, "OK\0"))
                 cout << "Validation: valid user" << endl;
-            else if (!strcmp(status, "NOK"))
+            else if (!strcmp(status, "NOK\0"))
                 cout << "Validation: invalid user" << endl;
         }
         if (!strcmp(command, "RUN")) {
             sscanf(receiverBuf, "%s %s", command, status);
-            if (!strcmp(status, "OK")) {
+            if (!strcmp(status, "OK\0")) {
                 cout << "Unregister: successful" << endl;
                 close(clientUDP);
                 close(serverUDP);
                 exit(EXIT_SUCCESS);
             }
-            if (!strcmp(status, "NOK"))
+            if (!strcmp(status, "NOK\0"))
                 cout << "Unregister: not accepted" << endl;
         }
     }
