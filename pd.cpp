@@ -129,16 +129,18 @@ string receiveFromSocket(int socket) {
 }
 
 void processCommands() {
-    std::cin >> buffer;
-    sscanf(buffer.c_str(), "%s ", ccommand);
+    buffer.clear();
+    command.clear();
+    memset(cbuffer, '\0', strlen(cbuffer));
+    fgets(cbuffer, 50, stdin);
+    sscanf(cbuffer, "%s ", ccommand);
     command = ccommand;
     if (command == "exit") {
         vector<string> args = {"UNR ", cUID, " ", cpass, "\n"};
         sendToServer(clientUDP, createString(args));
     }
     else if (command == "reg") {
-        sscanf(buffer.c_str(), "%s %s %s", ccommand, cUID, cpass);
-        command = ccommand;
+        sscanf(cbuffer, "%s %s %s", ccommand, cUID, cpass);
         UID = cUID;
         pass = cpass;
         if (!checkUID(UID))
@@ -146,7 +148,7 @@ void processCommands() {
         else if (!checkPass(pass))
             cout << "Register: invalid password" << endl;
         else {
-            vector<string> args = {"REG ", cUID, " ", cpass, " ", cPDIP, " ", cPDport, "\n"};
+            vector<string> args = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
             sendToServer(clientUDP, createString(args));
         }
     }

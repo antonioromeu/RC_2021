@@ -34,17 +34,19 @@ using std::ifstream;
 using std::swap;
 using std::stoi;
 using std::to_string;
+using std::cin;
+
 
 bool isNumeric(string str) {
     for (int i = 0; i < (int) str.length(); i++)
-        if (!isdigit(str[i]))
+        if (!isdigit(str.at(i)))
             return false;
     return true;
 }
 
 bool isAlphanumeric(string str) {
     for (int i = 0; i < (int) str.length(); i++)
-        if (!isalnum(str[i]))
+        if (!isalnum(str.at(i)))
             return false;
     return true;
 }
