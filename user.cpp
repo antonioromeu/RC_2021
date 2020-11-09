@@ -1,11 +1,35 @@
 #include "aux.h"
 
-int afd = 0, ASClientTCP, FSClientTCP, maxfd;
+struct timeval timeout;
+fd_set readfds;
+int out_fds, sfd, afd = 0, ASClientTCP, FSClientTCP, maxfd, nRead, s;
 struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
-char status[6];
-char nrFiles[4];
-char filesize[128];
-int nRead, s;
+string command, UID, recvUID, VC, Fop, buffer, status, pass, aux;
+string PDIP, PDport = "57032", ASIP = "localhost", ASport = "58032";
+string FSIP, FSport, Fname, RID, TID, nrFiles, filesize, filename, Fsize;
+
+char cPDIP[50];
+char cPDport[6]= "57032";
+char cASIP[50] = "localhost";
+char cASport[6] = "58032";
+char ccommand[128];
+char cUID[6];
+char crecvUID[6];
+char cpass[9];
+char cbuffer[1024];
+char cFSIP[50] = "localhost";
+char cFSport[6]= "59032";
+char cFop[50];
+char cFname[50];
+char cRID[5];
+char cVC[5];
+char cTID[5];
+char cfilename[128];
+char cFsize[10];
+char cstatus[6];
+char cnrFiles[4];
+char cfilesize[128];
+char caux[1];
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -14,24 +38,23 @@ void parseArgs(int argc, char *argv[]) {
     }
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp(argv[i], "-n"))
-            strcpy(ASIP, argv[i + 1]);
+            ASIP = argv[i + 1];
         else if (!strcmp(argv[i], "-p"))
-            strcpy(ASport, argv[i + 1]);
+            ASport = argv[i + 1];
         else if (!strcmp(argv[i], "-m"))
-            strcpy(FSIP, argv[i + 1]);
+            FSIP = argv[i + 1];
         else if (!strcmp(argv[i], "-q"))
-            strcpy(FSport, argv[i + 1]);
+            FSport = argv[i + 1];
     }
 }
 
-void sendToServer(int sfd, char *buf) {
-    if (write(sfd, buf, strlen(buf)) == -1) {
-        fprintf(stderr, "Failed write to server\n");
+void sendToServer(int sfd, string buf) {
+    if (write(sfd, buf.c_str(), buf.length()) == -1) {
+        cout << "Failed write to server" << endl;
         close(sfd); 
         exit(EXIT_FAILURE);
     }
-    // cout << buf << endl;
-    memset(buf, '\0', strlen(buf));
+    buf.clear();
 }
 
 void closeFSConnection() {
@@ -40,18 +63,20 @@ void closeFSConnection() {
 }
 
 void receiveFromServer(int sfd) {
-    nRead = read(sfd, command, 4);
+    nRead = read(sfd, ccommand, 4);
+    command = ccommand;
     if (nRead == -1) {
-        fprintf(stderr, "Failed read from server\n");
+        cout << "Failed read from server" << endl;
         close(sfd);
         exit(EXIT_FAILURE);
     }
-    command[nRead] = '\0';
-    if (!strcmp(command, "RLO ")) {
-        nRead = read(sfd, status, 4);
-        if (!strcmp(status, "OK\n"))
+    command += "\0";
+    if (command == "RLO ") {
+        nRead = read(sfd, cstatus, 4);
+        status = cstatus;
+        if (status == "OK\n")
             cout << "Login: successful" << endl;
-        else if (!strcmp(status, "NOK\n")) {
+        else if (status == "NOK\n") {
             cout << "Login: not successful" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
@@ -62,31 +87,32 @@ void receiveFromServer(int sfd) {
             exit(EXIT_FAILURE);
         }
     }
-    if (!strcmp(command, "RRQ ")) {
-        nRead = read(sfd, status, 6);
-        if (!strcmp(status, "OK\n"))
+    if (command == "RRQ ") {
+        nRead = read(sfd, cstatus, 6);
+        status = cstatus;
+        if (status == "OK\n")
             cout << "Request: successful" << endl;
-        else if (!strcmp(status, "NOK\n")) {
+        else if (status == "NOK\n") {
             cout << "Request: not successful" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "ELOG\n")) {
+        else if (status == "ELOG\n") {
             cout << "Request: successful login not previously done" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "EPD\n")) {
+        else if (status == "EPD\n") {
             cout << "Request: message couldnt be sent by AS to PD" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "EUSER\n")) {
+        else if (status == "EUSER\n") {
             cout << "Request: UID incorrect" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "EFOP\n")) {
+        else if (status == "EFOP\n") {
             cout << "Request: Fop is invalid" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
@@ -96,118 +122,120 @@ void receiveFromServer(int sfd) {
             exit(EXIT_FAILURE);
         }
     }
-    if (!strcmp(command, "RAU ")) {
-        nRead = read(sfd, TID, 4);
-        TID[nRead] = '\0';
-        if (!strcmp(TID, "0")) {
+    if (command == "RAU ") {
+        nRead = read(sfd, cTID, 4);
+        TID = cTID;
+        TID += "\0";
+        if (TID == "0") {
             cout << "Authentication: failed" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
         cout << "Authentication: successful" << endl;
     }
-    if (!strcmp(command, "RLS ")) {
-        char aux[2];
-        memset(nrFiles, '\0', strlen(nrFiles));
+    if (command == "RLS ") {
+        string aux;
         while (1) {
-            nRead = read(sfd, aux, 1);
-            if (aux[0] == ' ' || aux[0] == '\n')
+            aux.clear();
+            nRead = read(sfd, caux, 1);
+            aux = caux;
+            if (aux == " " || aux == "\n")
                 break;
-            aux[1] = '\0';
-            strcat(nrFiles, aux);
-            strcpy(aux, "\0");
+            nrFiles += aux;
         }
-        if (!strcmp(nrFiles, "EOF")) {
+        if (nrFiles == "EOF") {
             cout << "List: no files available" << endl;
             close(sfd);
         }
-        else if (!strcmp(nrFiles, "INV")) {
+        else if (nrFiles == "INV") {
             cout << "List: AS validation error" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(nrFiles, "ERR")) {
+        else if (nrFiles == "ERR") {
             cout << "List: LST request not correctly formulated" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        for (int i = 1; i <= (int) atoi(nrFiles); i++) {
+        for (int i = 1; i <= (int) stoi(nrFiles); i++) {
             int nSpaces = 2;    
-            memset(filename, '\0', strlen(filename));
+            filename.clear();
             while (nSpaces) {
-                strcpy(aux, "\0");
-                nRead = read(sfd, aux, 1);
+                aux.clear();
+                nRead = read(sfd, caux, 1);
+                aux = caux;
                 if (nRead <= 0)
-                    // nSpaces = 0;
                     break;
-                if (aux[0] == '\n')
+                if (aux == "\n")
                     nSpaces = 0;
-                if (aux[0] == ' ') {
+                if (aux == " ") {
                     nSpaces--;
                     if (!nSpaces)
                         break;
                 }
-                if (isalnum(aux[0]) || aux[0] == '.' || aux[0] == '-' || aux[0] == '_' || aux[0] == ' ') {
-                    aux[1] = '\0';
-                    strcat(filename, aux);
+                if (isalnum(aux.at(0)) || aux == "." || aux == "-" || aux == "_" || aux == " ") {
+                    aux += "\0";
+                    filename += aux; 
                 }
-                else if (aux[0] == '\n')
+                else if (aux == "\n")
                     break;
             }
-            strcpy(aux, "\0");
-            memset(aux, '\0', strlen(aux));
-            strcat(filename, "\0");
+            aux.clear();
+            filename += "\0";
             cout << i << " " << filename << endl;
         }
         closeFSConnection();
     }
-    if (!strcmp(command, "RRT ")) {
-        nRead = read(sfd, status, 3);
-        status[nRead] = '\0';
-        if (!strcmp(status, "OK ")) {
+    if (command == "RRT ") {
+        nRead = read(sfd, cstatus, 3);
+        status = cstatus;
+        status += "\0";
+        if (status == "OK ") {
             /*------Reads filesize-----*/
-            memset(filesize, '\0', strlen(filesize));
-            char c;
+            filesize.clear();
+            char c[1];
             do {
-                read(sfd, &c, 1);
-                strncat(filesize, &c, 1);
-            } while (isdigit(c));
+                read(sfd, c, 1);
+                filesize += c;
+            } while (isdigit(c[0]));
 
             /*------Reads data------*/
             int reading = 1024;
-            int intFilesize = atoi(filesize);;
-            FILE *file = fopen(Fname, "wb");
+            int intFilesize = stoi(filesize);
+            ofstream file(Fname.c_str());
             do {
-                memset(buffer, '\0', strlen(buffer));
-                nRead = read(sfd, buffer, reading);
+                buffer.clear();
+                nRead = read(sfd, cbuffer, reading);
+                buffer = cbuffer;
                 intFilesize -= nRead;
-                fwrite(buffer, 1, nRead, file);
+                file << buffer;
             } while (intFilesize > 0);
-            fclose(file);
+            file.close();
             cout << "Retrieve: successful" << endl;
         }
         else {
-            char aux[2];
-            nRead = read(sfd, aux, 1);
+            string aux;
+            nRead = read(sfd, caux, 1);
+            aux = caux;
             if (!nRead) {
                 cout << "Retrieve: cloud not read" << endl;
                 close(sfd);
                 exit(EXIT_FAILURE);
             }
-            strcat(status, aux);
-            if (!strcmp(status, "EOF\n"))
+            status += aux;
+            if (status == "EOF\n")
                 cout << "Retrieve: file not available" << endl;
-            else if (!strcmp(status, "NOK\n")) {
+            else if (status == "NOK\n") {
                 cout << "Retrieve: no content available in the FS for respective user" << endl;
                 close(sfd);
                 exit(EXIT_FAILURE);
             }
-            else if (!strcmp(status, "INV\n")) {
+            else if (status == "INV\n") {
                 cout << "Retrieve: AS validation error of the provided TID" << endl;
                 close(sfd);
                 exit(EXIT_FAILURE);
             }
-            else if (!strcmp(status, "ERR\n")) {
+            else if (status == "ERR\n") {
                 cout << "Retrieve: request is not correctly formulated" << endl;
                 close(sfd);
                 exit(EXIT_FAILURE);
@@ -215,31 +243,32 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
-    if (!strcmp(command, "RUP ")) {
-        nRead = read(sfd, status, 5);
-        if (!strcmp(status, "OK\n"))
+    if (command == "RUP ") {
+        nRead = read(sfd, cstatus, 5);
+        status = cstatus;
+        if (status == "OK\n")
             cout << "Upload: successful" << endl;
-        else if (!strcmp(status, "NOK\n")) {
+        else if (status == "NOK\n") {
             cout << "Upload: not successful" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "DUP\n")) {
+        else if (status == "DUP\n") {
             cout << "Upload: file already existed" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "FULL\n")) {
+        else if (status == "FULL\n") {
             cout << "Upload: 15 files were previously uploaded by this User" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "INV\n")) {
+        else if (status == "INV\n") {
             cout << "Upload: AS validation error of the provided TID" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "ERR\n")) {
+        else if (status == "ERR\n") {
             cout << "Upload: UPL request is not correctly formulated" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
@@ -250,26 +279,27 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
-    if (!strcmp(command, "RDL ")) {
-        nRead = read(sfd, status, 4);
-        if (!strcmp(status, "OK\n"))
+    if (command == "RDL ") {
+        nRead = read(sfd, cstatus, 4);
+        status = cstatus;
+        if (status == "OK\n")
             cout << "Delete: successful" << endl;
-        else if (!strcmp(status, "EOF\n")) {
+        else if (status == "EOF\n") {
             cout << "Delete: file not available" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "NOK\n")) {
+        else if (status == "NOK\n") {
             cout << "Delete: UID does not exist" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "INV\n")) {
+        else if (status == "INV\n") {
             cout << "Delete: AS validation error of the provided TID" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "ERR\n")) {
+        else if (status == "ERR\n") {
             cout << "Delete: DEL request is not correctly formulated" << endl;
             close(sfd);
             exit(EXIT_FAILURE);
@@ -280,21 +310,22 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
-    if (!strcmp(command, "RRM ")) {
-        read(sfd, status, 4);
-        if (!strcmp(status, "OK\n"))
+    if (command == "RRM ") {
+        read(sfd, cstatus, 4);
+        status = cstatus;
+        if (status == "OK\n")
             cout << "Remove: successful" << endl;
-        else if (!strcmp(status, "NOK\n")) {
+        else if (status == "NOK\n") {
             cout << "Remove: UID does not exist" << endl;
             close(sfd);
             // exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "INV\n")) {
+        else if (status == "INV\n") {
             cout << "Remove: AS validation error of the provided TID" << endl;
             close(sfd);
             // exit(EXIT_FAILURE);
         }
-        else if (!strcmp(status, "ERR\n")) {
+        else if (status == "ERR\n") {
             cout << "Remove: REM request is not correctly formulated" << endl;
             close(sfd);
             // exit(EXIT_FAILURE);
@@ -315,7 +346,7 @@ void openFSConnection() {
     memset(&hintsFSClient, 0, sizeof hintsFSClient);
     hintsFSClient.ai_family = AF_INET;
     hintsFSClient.ai_socktype = SOCK_STREAM;
-    s = getaddrinfo(FSIP, FSport, &hintsFSClient, &resFSClient);
+    s = getaddrinfo(FSIP.c_str(), FSport.c_str(), &hintsFSClient, &resFSClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         FD_CLR(FSClientTCP, &readfds);
@@ -331,95 +362,107 @@ void openFSConnection() {
 }
 
 void processCommands() {
-    fgets(buffer, 50, stdin);
-    sscanf(buffer, "%s ", command);
-    if (!strcmp(command, "exit")) {
+    std::cin >> buffer;
+    sscanf(buffer.c_str(), "%s ", ccommand);
+    command = ccommand;
+    if (command == "exit") {
         for (int fd = 0; fd < maxfd + 1; fd++)
             if (FD_ISSET(fd, &readfds))
                 close(fd);
         exit(EXIT_SUCCESS);
     }
-    else if (!strcmp(command, "login")) {
-        sscanf(buffer, "%s %s %s", command, UID, pass);
+    else if (command == "login") {
+        sscanf(buffer.c_str(), "%s %s %s", ccommand, cUID, cpass);
+        UID = cUID;
+        pass = cpass;
         if (!checkUID(UID) || !checkPass(pass))
             exit(EXIT_FAILURE);
-        const char *args[5] = {"LOG ", UID, " ", pass, "\n"};
-        sendToServer(ASClientTCP, createString(args, 5));
+        vector<string> args = {"LOG ", UID, " ", pass, "\n"};
+        sendToServer(ASClientTCP, createString(args));
     }
-    else if (!strcmp(command, "req")) {
-        sscanf(buffer, "%s %s", command, Fop);
+    else if (command == "req") {
+        sscanf(buffer.c_str(), "%s %s", ccommand, cFop);
+        Fop = cFop;
         srand(time(0));
-        sprintf(RID, "%d", rand() % 9000 + 1000);
-        if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-            sscanf(buffer, "%s %s %s", command, Fop, Fname);
-            const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
-            sendToServer(ASClientTCP, createString(args, 9));
+        sprintf(cRID, "%d", rand() % 9000 + 1000);
+        RID = cRID;
+        if (Fop.at(0) == 'R' || Fop.at(0) == 'U' || Fop.at(0) == 'D') {
+            sscanf(buffer.c_str(), "%s %s %s", ccommand, cFop, cFname);
+            Fname = cFname;
+            vector<string> args = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
+            sendToServer(ASClientTCP, createString(args));
         }
-        else if (!strcmp(Fop, "L") || !strcmp(Fop, "X")) {
-            const char *args[7] = {"REQ ", UID, " ", RID, " ", Fop, "\n"};
-            sendToServer(ASClientTCP, createString(args, 7));
+        else if (Fop == "L" || Fop == "X") {
+            vector<string> args = {"REQ ", UID, " ", RID, " ", Fop, "\n"};
+            sendToServer(ASClientTCP, createString(args));
         }
     }
-    else if (!strcmp(command, "val")) {
-        sscanf(buffer, "%s %s", command, VC);
-        const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
-        sendToServer(ASClientTCP, createString(args, 7));
+    else if (command == "val") {
+        sscanf(buffer.c_str(), "%s %s", ccommand, cVC);
+        command = ccommand;
+        VC = cVC;
+        vector<string> args = {"AUT ", UID, " ", RID, " ", VC, "\n"};
+        sendToServer(ASClientTCP, createString(args));
     }
-    else if (!strcmp(command, "list") || !strcmp(command, "l")) {
+    else if (command == "list" || command == "l") {
         openFSConnection();
-        const char *args[5] = {"LST ", UID, " ", TID, "\n"};
-        sendToServer(FSClientTCP, createString(args, 5));
+        vector<string> args = {"LST ", UID, " ", TID, "\n"};
+        sendToServer(FSClientTCP, createString(args));
     }
-    else if (!strcmp(command, "retrieve") || !strcmp(command, "r")) {
+    else if (command == "retrieve" || command == "r") {
         openFSConnection();
-        sscanf(buffer, "%s %s", command, filename);
-        strcpy(Fname, filename);
-        const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
-        sendToServer(FSClientTCP, createString(args, 7));
+        sscanf(buffer.c_str(), "%s %s", ccommand, cfilename);
+        Fname = cfilename;
+        vector<string> args = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
+        sendToServer(FSClientTCP, createString(args));
     }
-    else if (!strcmp(command, "upload") || !strcmp(command, "u")) {
+    else if (command == "upload" || command == "u") {
         openFSConnection();
-        sscanf(buffer, "%s %s", command, filename);
-        strcpy(Fname, filename);
-        FILE *file = fopen(Fname, "rb");
-        if (file == NULL) {
+        sscanf(buffer.c_str(), "%s %s", ccommand, cfilename);
+        command = ccommand;
+        filename = cfilename;
+        Fname = filename;
+        ifstream file(Fname);
+        if (!file.is_open()) {
             cout << "Upload: file does not exist" << endl;
             closeFSConnection();
-            exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE); 
         }
+        file.seekg(0, file.end);
+        int auxFilesize = file.tellg();
+        file.seekg(0, file.beg);
+        Fsize = to_string(auxFilesize);
 
-        fseek(file, 0, SEEK_END);
-        int auxFilesize = ftell(file);
-        rewind(file);
-        itoa(auxFilesize, Fsize, 10);
-
-        const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, " "};
-        sendToServer(FSClientTCP, createString(args, 9));
+        vector<string> args = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, " "};
+        sendToServer(FSClientTCP, createString(args));
         
-        int reading = 1024;
-        if (auxFilesize < reading)
-            reading = auxFilesize;
-        while (auxFilesize) {
-            nRead = fread(buffer, 1, reading, file);
-            if (!nRead)
-                break;
-            auxFilesize -= nRead;
-            if (auxFilesize)
-                buffer[nRead] = '\0';
+        while (getline(file, buffer)) {
             sendToServer(FSClientTCP, buffer);
         }
+        // int reading = 1024;
+        // if (auxFilesize < reading)
+        //     reading = auxFilesize;
+        // while (auxFilesize) {
+        //     getline(file, buffer);
+        //     if (!nRead)
+        //         break;
+        //     auxFilesize -= nRead;
+        //     if (auxFilesize)
+        //         buffer[nRead] = '\0';
+        //     sendToServer(FSClientTCP, buffer);
+        // }
     }
-    else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
+    else if (command == "delete" || command == "d") {
         openFSConnection();
-        sscanf(buffer, "%s %s", command, filename);
-        strcpy(Fname, filename);
-        const char *args[7] = {"DEL ", UID, " ", TID, " ", Fname, "\n"};
-        sendToServer(FSClientTCP, createString(args, 7));
+        sscanf(buffer.c_str(), "%s %s", ccommand, cfilename);
+        Fname = cfilename;
+        vector<string> args = {"DEL ", UID, " ", TID, " ", Fname, "\n"};
+        sendToServer(FSClientTCP, createString(args));
     }
-    else if (!strcmp(command, "remove") || !strcmp(command, "x")) {
+    else if (command == "remove" || command == "x") {
         openFSConnection();
-        const char *args[5] = {"REM ", UID, " ", TID, "\n"};
-        sendToServer(FSClientTCP, createString(args, 5));
+        vector<string> args = {"REM ", UID, " ", TID, "\n"};
+        sendToServer(FSClientTCP, createString(args));
     }
 }
 
@@ -433,7 +476,7 @@ int main(int argc, char **argv) {
     memset(&hintsASClient, 0, sizeof hintsASClient);
     hintsASClient.ai_family = AF_INET;
     hintsASClient.ai_socktype = SOCK_STREAM;
-    s = getaddrinfo(ASIP, ASport, &hintsASClient, &resASClient);
+    s = getaddrinfo(ASIP.c_str(), ASport.c_str(), &hintsASClient, &resASClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         exit(EXIT_FAILURE);

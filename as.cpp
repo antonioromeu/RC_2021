@@ -1,35 +1,77 @@
 #include "aux.h"
 
+struct timeval timeout;
+fd_set readfds;
+int out_fds, sfd;
+string PDIP, PDport = "57032", ASIP = "localhost", ASport = "58032";
+string command, UID, recvUID, VC, Fop, buffer, pass;
+
+char cFSIP[50] = "localhost";
+char cFSport[6]= "59032";
+char cFname[50];
+char cRID[5];
+char cTID[5];
+char cFsize[10];
+char cPDIP[50];
+char cPDport[6]= "57032";
+char cASIP[50] = "localhost";
+char cASport[6] = "58032";
+char ccommand[128];
+char cUID[6];
+char crecvUID[6];
+char cpass[9];
+char cFop[50];
+char cVC[5];
+char cfilename[128];
+
 int afd = 0, UDP, TCP, s;
-string newdir = "USERS/";
+string newdir = "USERS/", status;
 socklen_t addrlenUDP, addrlenTCP;
 struct addrinfo hintsUDP, hintsTCP, *resUDP, *resTCP;
 struct sockaddr_in addrUDP, addrTCP;
-// vector<vector<char>> matrix;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
-        fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
+        cout << "Usage: " << argv[0] << " host port msg..." << endl;
         exit(EXIT_FAILURE);
     }
     for (int i = 1; i < argc; i += 2) {
         if (!strcmp(argv[i], "-p"))
-            strcpy(ASport, argv[i]);
+            ASport = argv[i];
     }
+}
+
+void send(int socket, string buf) {
+    int n = 0;
+    if (socket == UDP)
+        n = sendto(socket, buf.c_str(), buf.length(), 0, (struct sockaddr*) &addrUDP, addrlenUDP);
+    else if (socket == TCP)
+        n = write(socket, buf.c_str(), buf.length());
+    if (n == -1) {
+        fprintf(stderr, "partial/failed write\n");
+        close(socket);
+        exit(EXIT_FAILURE);
+    }
+    buf.clear();
 }
 
 void receiveUDP(int socket) {
     int nRead;
     vector<string> matrix;
-    memset(buffer, '\0', strlen(buffer));
-    nRead = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrUDP, &addrlenUDP);
+    string auxBuffer;
+    buffer.clear();
+    nRead = recvfrom(socket, &buffer, BUFSIZE, 0, (struct sockaddr*) &addrUDP, &addrlenUDP);
     buffer[nRead] = '\0';
-    sscanf(buffer, "%s ", command);
-    if (!strcmp(command, "REG")) {
-        sscanf(buffer, "%s %s %s %s %s", command, UID, pass, PDIP, PDport);
+    sscanf(buffer.c_str(), "%s ", ccommand);
+    command = ccommand;
+    if (command == "REG") {
+        sscanf(buffer.c_str(), "%s %s %s %s %s", ccommand, cUID, cpass, cPDIP, cPDport);
+        UID = cUID;
+        pass = cpass;
+        PDIP = cPDIP;
+        PDport = cPDport;
         if (!checkDir(UID)) {
-            newdir = "USERS/";
-            newdir += UID + '\0';
+            newdir = string("USERS/") + string(UID) + string("\0");
             if (!mkdir(newdir.c_str(), 0777)) {
                 cout << "USERS/" << UID << " directory created" << endl;
                 string UIDaux = UID;
@@ -40,13 +82,15 @@ void receiveUDP(int socket) {
                 ofstream regFile((matrix.at(1)).c_str());
                 regFile << PDIP << " " << PDport << endl;
                 regFile.close();
+                status += string("OK\n");
             }
             else {
                 cout << "Unable to create USERS/" << UID << " directory" << endl;
-                close(socket);
-                return;
+                status += string("NOK\n");
             }
         }
+        auxBuffer += "RRG " + status;
+        send(UDP, auxBuffer);
     }
 }
 
@@ -68,7 +112,7 @@ int main(int argc, char **argv) {
     hintsUDP.ai_family = AF_INET;
     hintsUDP.ai_socktype = SOCK_DGRAM;
     hintsUDP.ai_flags = AI_PASSIVE;
-    s = getaddrinfo(NULL, ASport, &hintsUDP, &resUDP);
+    s = getaddrinfo(NULL, ASport.c_str(), &hintsUDP, &resUDP);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         close(UDP);
@@ -76,7 +120,7 @@ int main(int argc, char **argv) {
     }
     addrlenUDP = sizeof(addrUDP);
     
-    if (bind(UDP, resUDP->ai_addr, resUDP->ai_addrlen) < 0 ) {
+    if (bind(UDP, resUDP->ai_addr, resUDP->ai_addrlen) < 0) {
         perror("Bind failed");
         exit(EXIT_FAILURE);
     }

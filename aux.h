@@ -25,50 +25,36 @@
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
-using namespace std;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+using std::ofstream;
+using std::ifstream;
+using std::swap;
+using std::stoi;
+using std::to_string;
 
-struct timeval timeout;
-fd_set readfds;
-int out_fds, sfd;
-char PDIP[50];
-char PDport[6]= "57032";
-char ASIP[50] = "localhost";
-char ASport[6] = "58032";
-char command[128];
-char UID[6];
-char recvUID[6];
-char pass[9];
-char buffer[1024];
-char FSIP[50] = "localhost";
-char FSport[6]= "59032";
-char Fop[50];
-char Fname[50];
-char RID[5];
-char VC[5];
-char TID[5];
-char filename[128];
-char Fsize[10];
-
-bool isNumeric(char *str) {
-    for (int i = 0; i < (int) strlen(str); i++)
+bool isNumeric(string str) {
+    for (int i = 0; i < (int) str.length(); i++)
         if (!isdigit(str[i]))
             return false;
     return true;
 }
 
-bool isAlphanumeric(char *str) {
-    for (int i = 0; i < (int) strlen(str); i++)
+bool isAlphanumeric(string str) {
+    for (int i = 0; i < (int) str.length(); i++)
         if (!isalnum(str[i]))
             return false;
     return true;
 }
 
-bool checkUID(char *str) {
-    return (strlen(str) == 5 && isNumeric(str));
+bool checkUID(string str) {
+    return (str.length() == 5 && isNumeric(str));
 }
 
-bool checkPass(char *str) {
-    return (strlen(str) == 8 && isAlphanumeric(str));
+bool checkPass(string str) {
+    return (str.length() == 8 && isAlphanumeric(str));
 }
 
 bool checkFilename(char *str) {
@@ -83,56 +69,20 @@ bool checkFilename(char *str) {
     return true;
 }
 
-char* createString(const char **args, int len) {
-    strcpy(buffer, "\0");
-    for (int i = 0; i < len; i++)
-        strcat(buffer, args[i]);
+string createString(vector<string> args) {
+    string buffer;
+    for (int i = 0; i < (int) args.size(); i++)
+        buffer += args.at(i);
     return buffer;
 }
 
-void reverse(char *str, int length) { 
-    int start = 0; 
-    int end = length -1; 
-    while (start < end) { 
-        swap(*(str+start), *(str+end)); 
-        start++; 
-        end--; 
-    } 
-} 
-
-char* itoa(int num, char *str, int base) {
-    int i = 0;
-    bool isNegative = false;
-
-    if (num == 0) {
-        str[i++] = '0';
-        str[i] = '\0';
-        return str; 
-    }
-    if (num < 0 && base == 10) {
-        isNegative = true;
-        num = -num;
-    }
-    while (num != 0) {
-        int rem = num % base;
-        str[i++] = (rem > 9)? (rem-10) + 'a' : rem + '0';
-        num = num/base;
-    }
-    if (isNegative)
-        str[i++] = '-';
-    str[i] = '\0';
-    reverse(str, i);
-
-    return str; 
-} 
-
-bool checkDir(char *subdir) {
+bool checkDir(string subdir) {
     DIR *d;
     struct dirent *dir;
     d = opendir("/USERS");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
-            if (!strcmp(dir->d_name, subdir)) {
+            if (!strcmp(dir->d_name, subdir.c_str())) {
                 closedir(d);
                 return true;
             }

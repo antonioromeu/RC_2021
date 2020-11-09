@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -g -Wall -Wextra -std=c++11
-IP = 192.168.1.76
+IP = 192.168.2.40
 
 all: pd user as
 
@@ -20,3 +20,5 @@ clean:
 	@echo Cleaning...
 	rm -f pd user as
 	rm -r USERS
+	rm -r *.dSYM
+
