@@ -79,10 +79,13 @@ void processASAnswer(string buf) {
 
 string receiveFromSocket(int socket) {
     int n = 0;
-    buffer.clear();
     if (socket == clientUDP) {
-        n = recvfrom(socket, &buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
-        buffer[n] = '\0';
+        buffer.clear();
+        command.clear();
+        memset(cbuffer, '\0', strlen(cbuffer));
+        n = recvfrom(socket, cbuffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
+        buffer = cbuffer;
+        buffer += "\0";
         sscanf(buffer.c_str(), "%s ", ccommand);
         command = ccommand;
         if (command == "RRG") {
@@ -136,7 +139,7 @@ void processCommands() {
     sscanf(cbuffer, "%s ", ccommand);
     command = ccommand;
     if (command == "exit") {
-        vector<string> args = {"UNR ", cUID, " ", cpass, "\n"};
+        vector<string> args = {"UNR ", UID, " ", pass, "\n"};
         sendToServer(clientUDP, createString(args));
     }
     else if (command == "reg") {

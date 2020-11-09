@@ -1,6 +1,8 @@
 CC = g++
 CFLAGS = -g -Wall -Wextra -std=c++11
-IP = 192.168.2.40
+#HOST = $(shell hostname -I)
+#IP = $(HOST) | cut -d' ' -f2
+IP = localhost
 
 all: pd user as
 

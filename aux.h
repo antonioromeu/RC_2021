@@ -81,7 +81,7 @@ string createString(vector<string> args) {
 bool checkDir(string subdir) {
     DIR *d;
     struct dirent *dir;
-    d = opendir("/USERS");
+    d = opendir("./USERS");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
             if (!strcmp(dir->d_name, subdir.c_str())) {
