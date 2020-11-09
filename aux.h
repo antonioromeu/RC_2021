@@ -16,8 +16,12 @@
 #include <iostream>
 #include <time.h>
 #include <fstream>
+#include <vector>
+#include <cstring>
 
 #define BUFSIZE 1024
+#define FILENAMESIZE 28
+#define DIRSIZE 12
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
@@ -139,7 +143,22 @@ bool checkDir(char *subdir) {
     return false;
 }
 
-void createFiles(const char**args, int len, FILE *file, char *newdir) {
-//PARA O ROMEU <3
-    
+vector<string> createPathFiles(string UID) {
+    string base, passFile, regFile, loginFile, tidFile;
+    vector<string> matrix;
+    base.clear();
+    passFile.clear();
+    regFile.clear();
+    loginFile.clear();
+    tidFile.clear();
+    base += "USERS/" + UID + "/";
+    passFile += base + UID + "_pass.txt";
+    regFile += base + UID + "_reg.txt";
+    loginFile += base + UID + "_login.txt";
+    tidFile += base + UID + "_tid.txt";
+    matrix.push_back(passFile);
+    matrix.push_back(regFile);
+    matrix.push_back(loginFile);
+    matrix.push_back(tidFile);
+    return matrix;
 }

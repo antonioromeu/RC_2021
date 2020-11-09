@@ -1,11 +1,11 @@
 #include "aux.h"
 
 int afd = 0, UDP, TCP, s;
-char newdir[12] = "USERS/";
-char passFile[50];
+string newdir = "USERS/";
 socklen_t addrlenUDP, addrlenTCP;
 struct addrinfo hintsUDP, hintsTCP, *resUDP, *resTCP;
 struct sockaddr_in addrUDP, addrTCP;
+// vector<vector<char>> matrix;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -20,6 +20,7 @@ void parseArgs(int argc, char *argv[]) {
 
 void receiveUDP(int socket) {
     int nRead;
+    vector<string> matrix;
     memset(buffer, '\0', strlen(buffer));
     nRead = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrUDP, &addrlenUDP);
     buffer[nRead] = '\0';
@@ -27,21 +28,25 @@ void receiveUDP(int socket) {
     if (!strcmp(command, "REG")) {
         sscanf(buffer, "%s %s %s %s %s", command, UID, pass, PDIP, PDport);
         if (!checkDir(UID)) {
-            strcat(newdir, UID);
-            strcat(newdir, "\0");
-            if (!mkdir(newdir, 0777))
+            newdir = "USERS/";
+            newdir += UID + '\0';
+            if (!mkdir(newdir.c_str(), 0777)) {
                 cout << "USERS/" << UID << " directory created" << endl;
+                string UIDaux = UID;
+                matrix = createPathFiles(UIDaux);
+                ofstream passFile((matrix.at(0)).c_str());
+                passFile << pass << endl;
+                passFile.close();
+                ofstream regFile((matrix.at(1)).c_str());
+                regFile << PDIP << " " << PDport << endl;
+                regFile.close();
+            }
             else {
                 cout << "Unable to create USERS/" << UID << " directory" << endl;
                 close(socket);
                 return;
             }
         }
-        strcpy(passFile, newdir);
-        strcat(passFile, "/");
-        strcat(passFile, UID);
-        strcat(passFile, "_pass.txt");
-        FILE *UIDFile = fopen(passFile, "w");
     }
 }
 
