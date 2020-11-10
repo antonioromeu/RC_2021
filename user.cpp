@@ -1,11 +1,31 @@
 #include "aux.h"
 
-int afd = 0, ASClientTCP, FSClientTCP, maxfd;
-struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
+int afd = 0, ASClientTCP, FSClientTCP, maxfd, nRead, s, out_fds, sfd;
+
+char PDIP[50];
+char PDport[6]= "57032";
+char ASIP[50] = "localhost";
+char ASport[6] = "58032";
+char command[128];
+char UID[6];
+char recvUID[6];
+char pass[9];
+char buffer[1024];
+char FSIP[50] = "localhost";
+char FSport[6]= "59032";
+char Fop[50];
+char Fname[50];
+char RID[5];
+char VC[5];
+char TID[5];
+char filename[128];
+char Fsize[10];
 char status[6];
 char nrFiles[4];
 char filesize[128];
-int nRead, s;
+
+struct addrinfo hintsASClient, hintsFSClient, *resASClient, *resFSClient;
+fd_set readfds;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -27,9 +47,10 @@ void parseArgs(int argc, char *argv[]) {
 void sendToServer(int sfd, char *buf) {
     if (write(sfd, buf, strlen(buf)) == -1) {
         fprintf(stderr, "Failed write to server\n");
-        close(sfd); 
+        close(sfd);
         exit(EXIT_FAILURE);
     }
+    cout << buf << endl;
     memset(buf, '\0', strlen(buf));
 }
 
@@ -39,6 +60,7 @@ void closeFSConnection() {
 }
 
 void receiveFromServer(int sfd) {
+    cout << "no receive do as" << endl;
     nRead = read(sfd, command, 4);
     if (nRead == -1) {
         fprintf(stderr, "Failed read from server\n");
@@ -46,6 +68,7 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     command[nRead] = '\0';
+    cout << command << endl;
     if (!strcmp(command, "RLO ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
@@ -450,7 +473,6 @@ int main(int argc, char **argv) {
     }
     if (connect(ASClientTCP, resASClient->ai_addr, resASClient->ai_addrlen) == -1) {
         close(ASClientTCP);
-        cout << "a sair no connect" << endl;
         exit(EXIT_FAILURE);
     }
     

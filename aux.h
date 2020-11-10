@@ -27,28 +27,7 @@
 
 using namespace std;
 
-struct timeval timeout;
-fd_set readfds;
-int out_fds, sfd;
-char PDIP[50];
-char PDport[6]= "57032";
-char ASIP[50] = "localhost";
-char ASport[6] = "58032";
-char command[128];
-char UID[6];
-char recvUID[6];
-char pass[9];
-char buffer[1024];
-char FSIP[50] = "localhost";
-char FSport[6]= "59032";
-char Fop[50];
-char Fname[50];
-char RID[5];
-char VC[5];
-char TID[5];
-char filename[128];
-char Fsize[10];
-
+char newString[128];
 
 bool isNumeric(char *str) {
     for (int i = 0; i < (int) strlen(str); i++)
@@ -85,10 +64,10 @@ bool checkFilename(char *str) {
 }
 
 char* createString(const char **args, int len) {
-    strcpy(buffer, "\0");
+    strcpy(newString, "\0");
     for (int i = 0; i < len; i++)
-        strcat(buffer, args[i]);
-    return buffer;
+        strcat(newString, args[i]);
+    return newString;
 }
 
 void reverse(char *str, int length) { 
@@ -142,32 +121,4 @@ bool checkDir(char *subdir) {
         return false;
     }
     return false;
-}
-
-char **createPathFiles(char *UID) {
-    char *base, *passFile, *regFile, *loginFile, *tidFile;
-    vector<string> matrix;
-    char matrix[4][FILENAMESIZE];
-    memset(base, '\0', strlen(base));
-    memset(passFile, '\0', strlen(passFile));
-    memset(regFile, '\0', strlen(regFile));
-    memset(tidFile, '\0', strlen(loginFile));
-    const char *args[7] = {base, UID, "", TID, " ", Fname, "\n"};
-    base = createString(args, 7);
-
-
-
-    strcat(base, "USERS/");
-    strcat(base, UID);
-    strcat()
-    base += "USERS/" + UID + "/";
-    passFile += base + UID + "_pass.txt";
-    regFile += base + UID + "_reg.txt";
-    loginFile += base + UID + "_login.txt";
-    tidFile += base + UID + "_tid.txt";
-    matrix.push_back(passFile);
-    matrix.push_back(regFile);
-    matrix.push_back(loginFile);
-    matrix.push_back(tidFile);
-    return matrix;
 }

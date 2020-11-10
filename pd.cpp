@@ -1,12 +1,31 @@
 #include "aux.h"
 
-int afd = 0, clientUDP, serverUDP;
+int out_fds, sfd, afd = 0, clientUDP, serverUDP, s;
+char PDIP[50];
+char PDport[6]= "57032";
+char ASIP[50] = "localhost";
+char ASport[6] = "58032";
+char command[128];
+char UID[6];
+char recvUID[6];
+char pass[9];
+char buffer[1024];
+char FSIP[50] = "localhost";
+char FSport[6]= "59032";
+char Fop[50];
+char Fname[50];
+char RID[5];
+char VC[5];
+char TID[5];
+char filename[128];
+char Fsize[10];
+char status[4];
+
 socklen_t addrlenClient, addrlenServer;
 struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
 struct sockaddr_in addrClient, addrServer;
 
-char status[4] = "";
-int s;
+fd_set readfds;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
