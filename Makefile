@@ -2,13 +2,13 @@ CC = g++
 CFLAGS = -g -Wall -Wextra -std=c++11
 #HOST = $(shell hostname -I)
 #IP = $(HOST) | cut -d' ' -f2
-IP = localhost
+IP = 193.136.128.103
 
 all: pd user as
 
 pd:
 	$(CC) $(CFLAGS) pd.cpp -o pd
-	./pd $(IP)
+	./pd $(IP) -n tejo.tecnico.ulisboa.pt -p 58011
 
 as:
 	$(CC) $(CFLAGS) as.cpp -o as

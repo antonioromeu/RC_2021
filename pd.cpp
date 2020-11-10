@@ -4,121 +4,96 @@ int afd = 0, clientUDP, serverUDP;
 socklen_t addrlenClient, addrlenServer;
 struct addrinfo hintsClient, hintsServer, *resClient, *resServer;
 struct sockaddr_in addrClient, addrServer;
-string PDIP, PDport = "57032", ASIP = "localhost", ASport = "58032";
-string command, UID, recvUID, VC, Fop, buffer, status, pass;
-int s;
 
-struct timeval timeout;
-fd_set readfds;
-int out_fds, sfd;
-char cFsize[10];
-char cPDIP[50];
-char cPDport[6]= "57032";
-char cASIP[50] = "localhost";
-char cASport[6] = "58032";
-char ccommand[128];
-char cUID[6];
-char crecvUID[6];
-char cstatus[4] = "";
-char cpass[9];
-char cbuffer[1024];
-char cFSIP[50] = "localhost";
-char cFSport[6]= "59032";
-char cFop[50];
-char cFname[50];
-char cRID[5];
-char cVC[5];
-char cTID[5];
-char cfilename[128];
+char status[4] = "";
+int s;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 2 || argc > 8) {
-        cout << "Usage: " << argv[0] << " host port msg...\n";
+        fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    PDIP = argv[1];
+    strcpy(PDIP, argv[1]);
     for (int i = 2; i < argc; i += 2) {
         if (!strcmp(argv[i], "-d"))
-            PDport = argv[i + 1];
+            strcpy(PDport, argv[i + 1]);
         else if (!strcmp(argv[i], "-n"))
-            ASIP = argv[i + 1];
+            strcpy(ASIP, argv[i + 1]);
         else if (!strcmp(argv[i], "-p"))
-            ASport = argv[i + 1];
+            strcpy(ASport, argv[i + 1]);
     }
 }
 
-void sendToServer(int socket, string buf) {
+void sendToServer(int socket, char *buf) {
     int n = 0;
     if (socket == clientUDP)
-        n = sendto(socket, buf.c_str(), buf.length(), 0, resClient->ai_addr, resClient->ai_addrlen);     //target
+        n = sendto(socket, buf, strlen(buf), 0, resClient->ai_addr, resClient->ai_addrlen);
     else if (socket == serverUDP)
-        n = sendto(socket, buf.c_str(), buf.length(), 0, (struct sockaddr*) &addrServer, addrlenServer);     //target
+        n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrServer, addrlenServer);
     if (n == -1) {
-        cout << "Failed write" << endl;
+        fprintf(stderr, "partial/failed write\n");
         close(socket);
         exit(EXIT_FAILURE);
     }
-    buf.clear();
+    memset(buf, '\0', strlen(buf));
 }
 
-void processASAnswer(string buf) {
-    sscanf(buf.c_str(), "%s %s %s %s", ccommand, crecvUID, cVC, cFop);
-    if (Fop.at(0) == 'R' || Fop.at(0) == 'U' || Fop.at(0) == 'D')
-        sscanf(Fop.c_str(), "%s %s", cFop, cFname);
-    if (command == "VLC" && UID == recvUID) {
-        cout << "Validaton code: " << VC << endl;
-        vector<string> args = {"RVC ", UID, " OK\n"};
-        sendToServer(serverUDP, createString(args));
-    }
-    else if (command == "VLC" && UID != recvUID) {
-        cout << "Validaton: invalid user ID" << endl;
-        vector<string> args = {"RVC ", UID, " NOK\n"};
-        sendToServer(serverUDP, createString(args));
+void processASAnswer(char *buf) {
+    sscanf(buf, "%s ", command);
+    if (!strcmp(command, "VLC")) {
+        sscanf(buf, "%s %s %s %s", command, recvUID, VC, Fop);
+        if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D')
+            sscanf(Fop, "%s %s", Fop, Fname);
+        if (!strcmp(UID, recvUID)) {
+            cout << "Validaton code: " << VC << endl;
+            const char *args[3] = {"RVC ", UID, " OK\n"};
+            sendToServer(serverUDP, createString(args, 3));
+        }
+        else if (strcmp(UID, recvUID)) {
+            cout << "Validaton: invalid user ID" << endl;
+            const char *args[3] = {"RVC ", UID, " NOK\n"};
+            sendToServer(serverUDP, createString(args, 3));
+        }
     }
 }
 
-string receiveFromSocket(int socket) {
+char *receiveFromSocket(int socket) {
     int n = 0;
+    memset(buffer, '\0', strlen(buffer));
+    memset(command, '\0', strlen(command));
+    memset(status, '\0', strlen(status));
     if (socket == clientUDP) {
-        buffer.clear();
-        command.clear();
-        memset(cbuffer, '\0', strlen(cbuffer));
-        n = recvfrom(socket, cbuffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
-        buffer = cbuffer;
-        buffer += "\0";
-        sscanf(buffer.c_str(), "%s ", ccommand);
-        command = ccommand;
-        if (command == "RRG") {
-            sscanf(buffer.c_str(), "%s %s", ccommand, cstatus);
-            status = cstatus;
-            if (status == "OK")
+        n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
+        buffer[n] = '\0';
+        sscanf(buffer, "%s ", command);
+        if (!strcmp(command, "RRG")) {
+            sscanf(buffer, "%s %s", command, status);
+            if (!strcmp(status, "OK"))
                 cout << "Registration: successful" << endl;
-            else if (status == "NOK")
+            else if (!strcmp(status, "NOK"))
                 cout << "Registration: not accepted" << endl;
         }
-        if (command == "RVC") {
-            sscanf(buffer.c_str(), "%s %s %s", ccommand, cUID, cstatus);
-            UID = cUID;
-            status = cstatus;
-            if (status == "OK")
+        if (!strcmp(command, "RVC")) {
+            sscanf(buffer, "%s %s %s", command, UID, status);
+            if (!strcmp(status, "OK"))
                 cout << "Validation: valid user" << endl;
-            else if (status == "NOK")
+            else if (!strcmp(status, "NOK"))
                 cout << "Validation: invalid user" << endl;
         }
-        if (command == "RUN") {
-            sscanf(buffer.c_str(), "%s %s", ccommand, cstatus);
-            if (status == "OK") {
+        if (!strcmp(command, "RUN")) {
+            sscanf(buffer, "%s %s", command, status);
+            if (!strcmp(status, "OK")) {
                 cout << "Unregister: successful" << endl;
                 close(clientUDP);
                 close(serverUDP);
                 exit(EXIT_SUCCESS);
             }
-            if (status == "NOK")
+            if (!strcmp(status, "NOK"))
                 cout << "Unregister: not accepted" << endl;
         }
     }
     if (socket == serverUDP) {
-        n = recvfrom(socket, &buffer, BUFSIZE, 0, (struct sockaddr*) &addrServer, &addrlenServer);   //addr =A pointer to a socket address structure from which data is received. If address is nonzero, the source address is returned.
+        n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrServer, &addrlenServer);
         buffer[n] = '\0';
         if (n != -1)
             processASAnswer(buffer);
@@ -132,27 +107,21 @@ string receiveFromSocket(int socket) {
 }
 
 void processCommands() {
-    buffer.clear();
-    command.clear();
-    memset(cbuffer, '\0', strlen(cbuffer));
-    fgets(cbuffer, 50, stdin);
-    sscanf(cbuffer, "%s ", ccommand);
-    command = ccommand;
-    if (command == "exit") {
-        vector<string> args = {"UNR ", UID, " ", pass, "\n"};
-        sendToServer(clientUDP, createString(args));
+    fgets(buffer, 50, stdin);
+    sscanf(buffer, "%s ", command);
+    if (!strcmp(command, "exit")) {
+        const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
+        sendToServer(clientUDP, createString(args, 5));
     }
-    else if (command == "reg") {
-        sscanf(cbuffer, "%s %s %s", ccommand, cUID, cpass);
-        UID = cUID;
-        pass = cpass;
+    else if (!strcmp(command, "reg")) {
+        sscanf(buffer, "%s %s %s", command, UID, pass);
         if (!checkUID(UID))
             cout << "Register: invalid UID" << endl;
         else if (!checkPass(pass))
             cout << "Register: invalid password" << endl;
         else {
-            vector<string> args = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
-            sendToServer(clientUDP, createString(args));
+            const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
+            sendToServer(clientUDP, createString(args, 9));
         }
     }
 }
@@ -167,7 +136,7 @@ int main(int argc, char **argv) {
     memset(&hintsClient, 0, sizeof hintsClient);
     hintsClient.ai_family = AF_INET;
     hintsClient.ai_socktype = SOCK_DGRAM;
-    s = getaddrinfo(ASIP.c_str(), ASport.c_str(), &hintsClient, &resClient);
+    s = getaddrinfo(ASIP, ASport, &hintsClient, &resClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         close(clientUDP);
@@ -182,7 +151,7 @@ int main(int argc, char **argv) {
     hintsServer.ai_family = AF_INET;
     hintsServer.ai_socktype = SOCK_DGRAM;
     hintsServer.ai_flags = AI_PASSIVE;
-    s = getaddrinfo(NULL, PDport.c_str(), &hintsServer, &resServer);
+    s = getaddrinfo(NULL, PDport, &hintsServer, &resServer);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
         close(serverUDP);
@@ -196,14 +165,12 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        timeout.tv_sec = 120;
-        timeout.tv_usec = 0;
         FD_ZERO(&readfds);
         FD_SET(afd, &readfds); // i.e reg 92427 ...
         FD_SET(clientUDP, &readfds); // i.e REG OK
         FD_SET(serverUDP, &readfds); // i.e VLC 9999
         maxfd = max(clientUDP, serverUDP);
-        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, &timeout);
+        out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, NULL);
         switch (out_fds) {
             case 0:
                 printf("Timeout\n");

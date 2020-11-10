@@ -25,38 +25,51 @@
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
-using std::cout;
-using std::endl;
-using std::string;
-using std::vector;
-using std::ofstream;
-using std::ifstream;
-using std::swap;
-using std::stoi;
-using std::to_string;
-using std::cin;
+using namespace std;
+
+struct timeval timeout;
+fd_set readfds;
+int out_fds, sfd;
+char PDIP[50];
+char PDport[6]= "57032";
+char ASIP[50] = "localhost";
+char ASport[6] = "58032";
+char command[128];
+char UID[6];
+char recvUID[6];
+char pass[9];
+char buffer[1024];
+char FSIP[50] = "localhost";
+char FSport[6]= "59032";
+char Fop[50];
+char Fname[50];
+char RID[5];
+char VC[5];
+char TID[5];
+char filename[128];
+char Fsize[10];
 
 
-bool isNumeric(string str) {
-    for (int i = 0; i < (int) str.length(); i++)
-        if (!isdigit(str.at(i)))
+bool isNumeric(char *str) {
+    for (int i = 0; i < (int) strlen(str); i++)
+        if (!isdigit(str[i]))
             return false;
     return true;
 }
 
-bool isAlphanumeric(string str) {
-    for (int i = 0; i < (int) str.length(); i++)
-        if (!isalnum(str.at(i)))
+bool isAlphanumeric(char *str) {
+    for (int i = 0; i < (int) strlen(str); i++)
+        if (!isalnum(str[i]))
             return false;
     return true;
 }
 
-bool checkUID(string str) {
-    return (str.length() == 5 && isNumeric(str));
+bool checkUID(char *str) {
+    return (strlen(str) == 5 && isNumeric(str));
 }
 
-bool checkPass(string str) {
-    return (str.length() == 8 && isAlphanumeric(str));
+bool checkPass(char *str) {
+    return (strlen(str) == 8 && isAlphanumeric(str));
 }
 
 bool checkFilename(char *str) {
@@ -71,20 +84,56 @@ bool checkFilename(char *str) {
     return true;
 }
 
-string createString(vector<string> args) {
-    string buffer;
-    for (int i = 0; i < (int) args.size(); i++)
-        buffer += args.at(i);
+char* createString(const char **args, int len) {
+    strcpy(buffer, "\0");
+    for (int i = 0; i < len; i++)
+        strcat(buffer, args[i]);
     return buffer;
 }
 
-bool checkDir(string subdir) {
+void reverse(char *str, int length) { 
+    int start = 0; 
+    int end = length -1; 
+    while (start < end) { 
+        swap(*(str+start), *(str+end)); 
+        start++; 
+        end--; 
+    } 
+} 
+
+char* itoa(int num, char *str, int base) {
+    int i = 0;
+    bool isNegative = false;
+
+    if (num == 0) {
+        str[i++] = '0';
+        str[i] = '\0';
+        return str; 
+    }
+    if (num < 0 && base == 10) {
+        isNegative = true;
+        num = -num;
+    }
+    while (num != 0) {
+        int rem = num % base;
+        str[i++] = (rem > 9)? (rem-10) + 'a' : rem + '0';
+        num = num/base;
+    }
+    if (isNegative)
+        str[i++] = '-';
+    str[i] = '\0';
+    reverse(str, i);
+
+    return str; 
+} 
+
+bool checkDir(char *subdir) {
     DIR *d;
     struct dirent *dir;
-    d = opendir("./USERS");
+    d = opendir("/USERS");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
-            if (!strcmp(dir->d_name, subdir.c_str())) {
+            if (!strcmp(dir->d_name, subdir)) {
                 closedir(d);
                 return true;
             }
@@ -95,14 +144,22 @@ bool checkDir(string subdir) {
     return false;
 }
 
-vector<string> createPathFiles(string UID) {
-    string base, passFile, regFile, loginFile, tidFile;
+char **createPathFiles(char *UID) {
+    char *base, *passFile, *regFile, *loginFile, *tidFile;
     vector<string> matrix;
-    base.clear();
-    passFile.clear();
-    regFile.clear();
-    loginFile.clear();
-    tidFile.clear();
+    char matrix[4][FILENAMESIZE];
+    memset(base, '\0', strlen(base));
+    memset(passFile, '\0', strlen(passFile));
+    memset(regFile, '\0', strlen(regFile));
+    memset(tidFile, '\0', strlen(loginFile));
+    const char *args[7] = {base, UID, "", TID, " ", Fname, "\n"};
+    base = createString(args, 7);
+
+
+
+    strcat(base, "USERS/");
+    strcat(base, UID);
+    strcat()
     base += "USERS/" + UID + "/";
     passFile += base + UID + "_pass.txt";
     regFile += base + UID + "_reg.txt";
