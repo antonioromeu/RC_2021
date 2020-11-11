@@ -50,7 +50,6 @@ void sendToServer(int sfd, char *buf) {
         close(sfd);
         exit(EXIT_FAILURE);
     }
-    cout << buf << endl;
     memset(buf, '\0', strlen(buf));
 }
 
@@ -60,7 +59,6 @@ void closeFSConnection() {
 }
 
 void receiveFromServer(int sfd) {
-    cout << "no receive do as" << endl;
     nRead = read(sfd, command, 4);
     if (nRead == -1) {
         fprintf(stderr, "Failed read from server\n");
@@ -68,7 +66,6 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     command[nRead] = '\0';
-    cout << command << endl;
     if (!strcmp(command, "RLO ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
@@ -429,18 +426,6 @@ void processCommands() {
         memset(buffer, '\0', strlen(buffer));
         strcpy(buffer, "\n");
         sendToServer(FSClientTCP, buffer);
-        
-        // if (intFilesize < reading)
-        //     reading = auxFilesize;
-        // while (auxFilesize) {
-        //     nRead = fread(buffer, 1, reading, file);
-        //     if (!nRead)
-        //         break;
-        //     auxFilesize -= nRead;
-        //     if (auxFilesize)
-        //         buffer[nRead] = '\0';
-        //     sendToServer(FSClientTCP, buffer);
-        // }
     }
     else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
         openFSConnection();
@@ -472,6 +457,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     if (connect(ASClientTCP, resASClient->ai_addr, resASClient->ai_addrlen) == -1) {
+        cout << "no connect" << endl;
         close(ASClientTCP);
         exit(EXIT_FAILURE);
     }
