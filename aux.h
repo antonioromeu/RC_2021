@@ -25,8 +25,6 @@
 #define GN 32
 #define max(A, B) ((A) >= (B) ? (A) : (B))
 
-using namespace std;
-
 char newString[128];
 
 bool isNumeric(char *str) {
@@ -74,7 +72,7 @@ void reverse(char *str, int length) {
     int start = 0; 
     int end = length -1; 
     while (start < end) { 
-        swap(*(str+start), *(str+end)); 
+        std::swap(*(str+start), *(str+end)); 
         start++; 
         end--; 
     } 
@@ -109,7 +107,7 @@ char* itoa(int num, char *str, int base) {
 bool checkDir(char *subdir) {
     DIR *d;
     struct dirent *dir;
-    d = opendir("/USERS");
+    d = opendir("./USERS/");
     if (d) {
         while ((dir = readdir(d)) != NULL) {
             if (!strcmp(dir->d_name, subdir)) {
@@ -121,4 +119,18 @@ bool checkDir(char *subdir) {
         return false;
     }
     return false;
+}
+
+int countFiles(char *subdir) {
+    DIR *d;
+    struct dirent *dir;
+    d = opendir("./USERS/");
+    int i = 0;
+    if (d) {
+        while ((dir = readdir(d)) != NULL)
+            if (!strcmp(dir->d_name, subdir))
+                i++;
+        closedir(d);
+    }
+    return i;
 }

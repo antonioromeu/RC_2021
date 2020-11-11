@@ -43,6 +43,13 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
+void closeAllConnections() {
+    close(clientUDP);
+    close(serverUDP);
+    freeaddrinfo(resClient);
+    freeaddrinfo(resServer);
+}
+
 void sendToServer(int socket, char *buf) {
     int n = 0;
     if (socket == clientUDP)
@@ -51,7 +58,7 @@ void sendToServer(int socket, char *buf) {
         n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrServer, addrlenServer);
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(socket);
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     memset(buf, '\0', strlen(buf));
@@ -64,12 +71,12 @@ void processASAnswer(char *buf) {
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D')
             sscanf(Fop, "%s %s", Fop, Fname);
         if (!strcmp(UID, recvUID)) {
-            cout << "Validaton code: " << VC << endl;
+            std::cout << "Validaton code: " << VC << std::endl;
             const char *args[3] = {"RVC ", UID, " OK\n"};
             sendToServer(serverUDP, createString(args, 3));
         }
         else if (strcmp(UID, recvUID)) {
-            cout << "Validaton: invalid user ID" << endl;
+            std::cout << "Validaton: invalid user ID" << std::endl;
             const char *args[3] = {"RVC ", UID, " NOK\n"};
             sendToServer(serverUDP, createString(args, 3));
         }
@@ -84,42 +91,44 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         buffer[n] = '\0';
+        std::cout << buffer << " no clientUDP" << std::endl;
         sscanf(buffer, "%s ", command);
         if (!strcmp(command, "RRG")) {
             sscanf(buffer, "%s %s", command, status);
             if (!strcmp(status, "OK"))
-                cout << "Registration: successful" << endl;
+                std::cout << "Registration: successful" << std::endl;
             else if (!strcmp(status, "NOK"))
-                cout << "Registration: not accepted" << endl;
+                std::cout << "Registration: not accepted" << std::endl;
         }
         if (!strcmp(command, "RVC")) {
             sscanf(buffer, "%s %s %s", command, UID, status);
             if (!strcmp(status, "OK"))
-                cout << "Validation: valid user" << endl;
+                std::cout << "Validation: valid user" << std::endl;
             else if (!strcmp(status, "NOK"))
-                cout << "Validation: invalid user" << endl;
+                std::cout << "Validation: invalid user" << std::endl;
         }
         if (!strcmp(command, "RUN")) {
             sscanf(buffer, "%s %s", command, status);
             if (!strcmp(status, "OK")) {
-                cout << "Unregister: successful" << endl;
+                std::cout << "Unregister: successful" << std::endl;
                 close(clientUDP);
                 close(serverUDP);
                 exit(EXIT_SUCCESS);
             }
             if (!strcmp(status, "NOK"))
-                cout << "Unregister: not accepted" << endl;
+                std::cout << "Unregister: not accepted" << std::endl;
         }
     }
     if (socket == serverUDP) {
         n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrServer, &addrlenServer);
         buffer[n] = '\0';
+        std::cout << buffer << " no serverUDP" << std::endl;
         if (n != -1)
             processASAnswer(buffer);
     }
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
-        close(socket); 
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     return buffer;
@@ -135,9 +144,9 @@ void processCommands() {
     else if (!strcmp(command, "reg")) {
         sscanf(buffer, "%s %s %s", command, UID, pass);
         if (!checkUID(UID))
-            cout << "Register: invalid UID" << endl;
+            std::cout << "Register: invalid UID" << std::endl;
         else if (!checkPass(pass))
-            cout << "Register: invalid password" << endl;
+            std::cout << "Register: invalid password" << std::endl;
         else {
             const char *args[9] = {"REG ", UID, " ", pass, " ", PDIP, " ", PDport, "\n"};
             sendToServer(clientUDP, createString(args, 9));
@@ -158,7 +167,7 @@ int main(int argc, char **argv) {
     s = getaddrinfo(ASIP, ASport, &hintsClient, &resClient);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        close(clientUDP);
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     addrlenClient = sizeof(addrClient);
@@ -173,13 +182,14 @@ int main(int argc, char **argv) {
     s = getaddrinfo(NULL, PDport, &hintsServer, &resServer);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        close(serverUDP);
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     addrlenServer = sizeof(addrServer);
     
     if (bind(serverUDP, resServer->ai_addr, resServer->ai_addrlen) < 0 ) {
         perror("Bind failed");
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
 

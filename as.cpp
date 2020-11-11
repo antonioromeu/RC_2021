@@ -1,7 +1,7 @@
 #include "aux.h"
 
 fd_set readfds;
-int out_fds, sfd, afd = 0, serverUDP, clientUDP, masterTCP, FSserverUDP, s, newSocket;
+int out_fds, sfd, afd = 0, PDServerUDP, clientUDP, masterTCP, FSServerUDP, s, newSocket;
 char PDIP[50];
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
@@ -37,9 +37,9 @@ char states[10][128];
 int master_socket, addrlen, new_socket, clientsFD[10], max_clients = 10, activity, i, valread, fd, maxFD;
 struct sockaddr_in address;
 
-socklen_t addrlenUDP, addrlenClientUDP, addrlenTCP;
-struct addrinfo hintsUDP, hintsClientUDP, hintsTCP, *resUDP, *resFSUDP, *resClientUDP, *resTCP;
-struct sockaddr_in addrUDP, addrClientUDP, addrTCP;
+socklen_t addrlenUDP, addrlenClientUDP, addrlenFSServerUDP, addrlenTCP;
+struct addrinfo hintsUDP, hintsClientUDP, hintsFSServerUDP, hintsTCP, *resUDP, *resFSServerUDP, *resClientUDP, *resTCP;
+struct sockaddr_in addrUDP, addrClientUDP, addrFSServerUDP, addrTCP;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
@@ -54,21 +54,27 @@ void parseArgs(int argc, char *argv[]) {
 
 void closeAllConnections() {
     close(clientUDP);
-    close(serverUDP);
+    close(PDServerUDP);
+    close(FSServerUDP);
     close(masterTCP);
     for (int i = 0; i < max_clients; i++) {
         if (clientsFD[i])
             close(clientsFD[i]);
     }
     freeaddrinfo(resClientUDP);
+    freeaddrinfo(resFSServerUDP);
     freeaddrinfo(resUDP);
     freeaddrinfo(resTCP);
 }
 
 void sendUDP(int socket, char *buf) {
+    printf("a mandar para udp: %s\n", buf);
     int n = 0;
-    if (socket == serverUDP) {
+    if (socket == PDServerUDP) {
         n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrUDP, addrlenUDP);
+    }
+    if (socket == FSServerUDP) {
+        n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrFSServerUDP, addrlenFSServerUDP);
     }
     else if (socket == clientUDP) {
         n = sendto(socket, buf, strlen(buf), 0, resClientUDP->ai_addr, resClientUDP->ai_addrlen);
@@ -116,6 +122,7 @@ void receiveClientUDP(int socket) {
     memset(newdir, '\0', strlen(base));
     int n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClientUDP, &addrlenClientUDP);
     buffer[n] = '\0';
+    std::cout << buffer << "buffer receiveUDP " << buffer << std::endl;
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "RVC")) {
         sscanf(buffer, "%s %s %s", command, UID, status);
@@ -134,9 +141,48 @@ void receiveClientUDP(int socket) {
         fread(buffer, 1, 128, file);
         fclose(file);
         s = atoi(buffer);
+        sendTCP(s, auxBuffer);
+        memset(auxBuffer, '\0', strlen(auxBuffer));
     }
-    sendTCP(s, auxBuffer);
-    memset(auxBuffer, '\0', strlen(auxBuffer));
+    if (!strcmp(command, "VLD")) {
+        sscanf(buffer, "%s %s %s", command, UID, TID);
+        printf("TID: %s\n", TID);
+        if (!strcmp(TID, "0")) {
+            printf("o tid é 0\n");
+            strcpy(Fop, "E");
+            const char *args[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
+            sendUDP(socket, createString(args, 7));
+            return;
+        }
+        memset(buffer, '\0', strlen(buffer));
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+        const char *args[5] = {"USERS/", UID, "/", UID, "_fd.txt"};
+        strcpy(filename, createString(args, 5));
+        FILE *file = fopen(filename, "r");
+        fread(buffer, 1, 128, file);
+        fclose(file);
+        sscanf(buffer, "%s %s", auxBuffer, Fop);
+        itoa(s, auxBuffer, strlen(auxBuffer));
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+        if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
+            sscanf(Fop, "%s %s", Fop, Fname);
+            const char *args1[9] = {"CNF ", UID, " ", TID, " ", Fop, " ", Fname, "\n"};
+            sendUDP(socket, createString(args1, 9));
+        }
+        else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
+            const char *args1[8] = {"CNF ", UID, " ", TID, " ", Fop, " ", "\n"};
+            sendUDP(socket, createString(args1, 8));
+        }
+        memset(buffer, '\0', strlen(buffer));
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+        file = fopen(filename, "w");
+        itoa(s, auxBuffer, strlen(auxBuffer));
+        strcpy(buffer, auxBuffer);
+        strcat(buffer, "\0");
+        fwrite(buffer, 1, 128, file);
+        fclose(file);
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+    }
 }
 
 void receiveServerUDP(int socket) {
@@ -146,7 +192,8 @@ void receiveServerUDP(int socket) {
     memset(newdir, '\0', strlen(base));
     int n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrUDP, &addrlenUDP);
     buffer[n] = '\0';
-    cout << buffer << endl;
+    printf("no receive server udp, recebe %s\n", buffer);
+    std::cout << buffer << "buffer serverUDP " << buffer << std::endl;
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "REG")) {
         sscanf(buffer, "%s %s %s %s %s", command, UID, pass, PDIP, PDport);
@@ -187,22 +234,22 @@ void receiveServerUDP(int socket) {
         strcat(auxBuffer, status);
     }
     if (!strcmp(command, "UNR")) {
+        memset(status, '\0', strlen(status));
         sscanf(buffer, "%s %s %s", command, UID, pass);
         if (checkDir(UID)) {
-            const char *args[5] = {"rm /USERS/", UID, "/", UID, "_reg.txt\0"};
+            const char *args[5] = {"./USERS/", UID, "/", UID, "_reg.txt\0"};
             strcpy(newdir, createString(args, 5));
-            system(newdir);
-            // remove(newdir);
+            remove(newdir);
             strcat(status, "OK\n");
         }
         else {
-            printf("Unable to remove USERS/%s/%s_reg.txt", UID, UID);
+            printf("Unable to remove USERS/%s/%s_reg.txt\n", UID, UID);
             strcat(status, "NOK\n");
         }
         strcat(auxBuffer, "RUN ");
         strcat(auxBuffer, status);
     }
-    sendUDP(serverUDP, auxBuffer);
+    sendUDP(PDServerUDP, auxBuffer);
     memset(auxBuffer, '\0', strlen(auxBuffer));
 }
 
@@ -238,21 +285,37 @@ void receiveTCP(int socket) {
         sendTCP(socket, createString(args1, 3));
     }
     if (!strcmp(command, "REQ")) {
+        setupClientUDP(PDIP, PDport);
         srand(time(0));
         sprintf(VC, "%d", rand() % 9000 + 1000);
         sscanf(buffer, "%s %s %s %s", command, UID, RID, Fop);
+        const char *args1[4] = {base, "/", UID, "_fd.txt\0"};
+        strcpy(fdFile, createString(args1, 4));
+        FILE *file = fopen(fdFile, "a");
+        memset(auxBuffer, '\0', strlen(auxBuffer));
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s %s %s", command, UID, RID, Fop, Fname);
             const char *args[9] = {"VLC ", UID, " ", VC, " ", Fop, " ", Fname, "\n"};
             sendUDP(clientUDP, createString(args, 9));
+            const char *args2[5] = {" ", Fop, " ", Fname, "\0"};
+            strcpy(auxBuffer, createString(args2, 5));
+            fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         }
         else if (!strcmp(Fop, "L") || !strcmp(Fop, "X")) {
             const char *args[7] = {"VLC ", UID, " ", VC, " ", Fop, "\n"};
             sendUDP(clientUDP, createString(args, 7));
+            const char *args2[3] = {" ", Fop, "\0"};
+            strcpy(auxBuffer, createString(args2, 3));
+            fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         }
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+        fclose(file);
     }
     if (!strcmp(command, "AUT")) {
+        srand(time(0));
+        sprintf(TID, "%d", rand() % 9000 + 1000);
         sscanf(buffer, "%s %s %s %s", command, UID, RID, recvVC);
+        printf("VC: %s, recvVC: %s, TID: %s\n", VC, recvVC, TID);
         if (!strcmp(VC, recvVC)) {
             const char *args[3] = {"RAU ", TID, "\n"};
             sendTCP(socket, createString(args, 3));
@@ -271,9 +334,9 @@ int main(int argc, char **argv) {
     if (!mkdir(aux, 0777))
         printf("Created ./USERS directory\n");
     
-    /*------------serverUDP Socket---------*/
-    serverUDP = socket(AF_INET, SOCK_DGRAM, 0);
-    if (serverUDP == -1)
+    /*------------PDServerUDP Socket---------*/
+    PDServerUDP = socket(AF_INET, SOCK_DGRAM, 0);
+    if (PDServerUDP == -1)
         exit(1);
     memset(&hintsUDP, 0, sizeof hintsUDP);
     hintsUDP.ai_family = AF_INET;
@@ -282,34 +345,35 @@ int main(int argc, char **argv) {
     s = getaddrinfo(NULL, ASport, &hintsUDP, &resUDP);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo AS: %s\n", gai_strerror(s));
-        close(serverUDP);
+        close(PDServerUDP);
         exit(EXIT_FAILURE);
     }
     addrlenUDP = sizeof(addrUDP);
-    if (bind(serverUDP, resUDP->ai_addr, resUDP->ai_addrlen) < 0) {
+    if (bind(PDServerUDP, resUDP->ai_addr, resUDP->ai_addrlen) < 0) {
         perror("Bind failed");
         exit(EXIT_FAILURE);
     }
 
-    /*------------FSserverUDP Socket---------*/
-    // FSserverUDP = socket(AF_INET, SOCK_DGRAM, 0);
-    // if (serverUDP == -1)
-    //     exit(1);
-    // memset(&hintsUDP, 0, sizeof hintsUDP);
-    // hintsUDP.ai_family = AF_INET;
-    // hintsUDP.ai_socktype = SOCK_DGRAM;
-    // hintsUDP.ai_flags = AI_PASSIVE;
-    // s = getaddrinfo(NULL, ASport, &hintsUDP, &resFSUDP);
-    // if (s != 0) {
-    //     fprintf(stderr, "getaddrinfo AS: %s\n", gai_strerror(s));
-    //     close(FSserverUDP);
-    //     exit(EXIT_FAILURE);
-    // }
-    // addrlenFSUDP = sizeof(addrFSUDP);
-    // if (bind(serverUDP, resFSUDP->ai_addr, resFSUDP->ai_addrlen) < 0) {
-    //     perror("Bind failed");
-    //     exit(EXIT_FAILURE);
-    // }
+    /*------------FSServerUDP Socket---------*/
+    FSServerUDP = socket(AF_INET, SOCK_DGRAM, 0);
+    if (FSServerUDP == -1)
+        exit(1);
+    memset(&hintsFSServerUDP, 0, sizeof hintsFSServerUDP);
+    hintsFSServerUDP.ai_family = AF_INET;
+    hintsFSServerUDP.ai_socktype = SOCK_DGRAM;
+    hintsFSServerUDP.ai_flags = AI_PASSIVE;
+    s = getaddrinfo(FSIP, FSport, &hintsFSServerUDP, &resFSServerUDP);
+    // s = getaddrinfo(NULL, FSport, &hintsFSServerUDP, &resFSServerUDP);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        close(FSServerUDP);
+        exit(EXIT_FAILURE);
+    }
+    addrlenFSServerUDP = sizeof(addrFSServerUDP);
+    if (bind(FSServerUDP, resFSServerUDP->ai_addr, resFSServerUDP->ai_addrlen) < 0 ) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
 
     /*------------masterTCP Socket---------*/
     for (i = 0; i < max_clients; i++)
@@ -340,7 +404,8 @@ int main(int argc, char **argv) {
 
     while (1) {
         FD_ZERO(&readfds);
-        FD_SET(serverUDP, &readfds);
+        FD_SET(PDServerUDP, &readfds);
+        FD_SET(FSServerUDP, &readfds);
         FD_SET(clientUDP, &readfds);
         FD_SET(masterTCP, &readfds);
         maxFD = masterTCP;
@@ -352,7 +417,8 @@ int main(int argc, char **argv) {
                 maxFD = fd;
         }
 
-        maxFD = max(serverUDP, maxFD);
+        maxFD = max(PDServerUDP, maxFD);
+        maxFD = max(FSServerUDP, maxFD);
         activity = select(maxFD + 1, &readfds, NULL, NULL, NULL);
         if ((activity < 0) && (errno != EINTR))
             printf("select error");
@@ -365,15 +431,19 @@ int main(int argc, char **argv) {
                 perror("Select\n");
                 exit(EXIT_FAILURE);
             default:
-                // if (FD_ISSET(FSserverUDP, &readfds)) {
-                //     receiveFSUDP(serverUDP);
-                //     break;
-                // }
-                if (FD_ISSET(serverUDP, &readfds)) {
-                    receiveServerUDP(serverUDP);
+                if (FD_ISSET(FSServerUDP, &readfds)) {
+                    printf("a receber fs\n");
+                    receiveClientUDP(FSServerUDP);
+                    break;
+                }
+                if (FD_ISSET(PDServerUDP, &readfds)) {
+                    printf("no pd server\n");
+                    receiveServerUDP(PDServerUDP);
+                    printf("a sair da funcao receive Server udp\n");
                     break;
                 }
                 if (FD_ISSET(clientUDP, &readfds)) {
+                    printf("no pd client\n");
                     receiveClientUDP(clientUDP);
                     break;
                 }
@@ -394,6 +464,7 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < max_clients; i++) {
                     fd = clientsFD[i];
                     if (FD_ISSET(fd, &readfds)) {
+                        printf("tcp\n");
                         receiveTCP(fd);
                     }
                 }

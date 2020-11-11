@@ -44,10 +44,18 @@ void parseArgs(int argc, char *argv[]) {
     }
 }
 
+void closeAllConnections() {
+    close(ASClientTCP);
+    close(FSClientTCP);
+    freeaddrinfo(resASClient);
+    freeaddrinfo(resFSClient);
+}
+
 void sendToServer(int sfd, char *buf) {
+    std::cout << buf << std::endl;
     if (write(sfd, buf, strlen(buf)) == -1) {
         fprintf(stderr, "Failed write to server\n");
-        close(sfd);
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     memset(buf, '\0', strlen(buf));
@@ -62,68 +70,69 @@ void receiveFromServer(int sfd) {
     nRead = read(sfd, command, 4);
     if (nRead == -1) {
         fprintf(stderr, "Failed read from server\n");
-        close(sfd);
+        closeAllConnections();
         exit(EXIT_FAILURE);
     }
     command[nRead] = '\0';
     if (!strcmp(command, "RLO ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
-            cout << "Login: successful" << endl;
+            std::cout << "Login: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
-            cout << "Login: not successful" << endl;
-            close(sfd);
+            std::cout << "Login: not successful" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else {
-            cout << "Error" << endl;
-            close(sfd);
+            std::cout << "Error" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
     }
     if (!strcmp(command, "RRQ ")) {
         nRead = read(sfd, status, 6);
         if (!strcmp(status, "OK\n"))
-            cout << "Request: successful" << endl;
+            std::cout << "Request: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
-            cout << "Request: not successful" << endl;
-            close(sfd);
+            std::cout << "Request: not successful" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "ELOG\n")) {
-            cout << "Request: successful login not previously done" << endl;
-            close(sfd);
+            std::cout << "Request: successful login not previously done" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "EPD\n")) {
-            cout << "Request: message couldnt be sent by AS to PD" << endl;
-            close(sfd);
+            std::cout << "Request: message couldnt be sent by AS to PD" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "EUSER\n")) {
-            cout << "Request: UID incorrect" << endl;
-            close(sfd);
+            std::cout << "Request: UID incorrect" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "EFOP\n")) {
-            cout << "Request: Fop is invalid" << endl;
-            close(sfd);
+            std::cout << "Request: Fop is invalid" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else {
-            close(sfd);
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
     }
     if (!strcmp(command, "RAU ")) {
         nRead = read(sfd, TID, 4);
         TID[nRead] = '\0';
+        printf("TID recebido as para o pd: %s", TID);
         if (!strcmp(TID, "0")) {
-            cout << "Authentication: failed" << endl;
-            close(sfd);
+            std::cout << "Authentication: failed" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
-        cout << "Authentication: successful" << endl;
+        std::cout << "Authentication: successful" << std::endl;
     }
     if (!strcmp(command, "RLS ")) {
         char aux[2];
@@ -137,17 +146,17 @@ void receiveFromServer(int sfd) {
             strcpy(aux, "\0");
         }
         if (!strcmp(nrFiles, "EOF")) {
-            cout << "List: no files available" << endl;
+            std::cout << "List: no files available" << std::endl;
             close(sfd);
         }
         else if (!strcmp(nrFiles, "INV")) {
-            cout << "List: AS validation error" << endl;
-            close(sfd);
+            std::cout << "List: AS validation error" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(nrFiles, "ERR")) {
-            cout << "List: LST request not correctly formulated" << endl;
-            close(sfd);
+            std::cout << "List: LST request not correctly formulated" << std::endl;
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         for (int i = 1; i <= (int) atoi(nrFiles); i++) {
@@ -176,7 +185,7 @@ void receiveFromServer(int sfd) {
             strcpy(aux, "\0");
             memset(aux, '\0', strlen(aux));
             strcat(filename, "\0");
-            cout << i << " " << filename << endl;
+            std::cout << i << " " << filename << std::endl;
         }
         closeFSConnection();
     }
@@ -203,32 +212,32 @@ void receiveFromServer(int sfd) {
                 fwrite(buffer, 1, nRead, file);
             } while (intFilesize > 0);
             fclose(file);
-            cout << "Retrieve: successful" << endl;
+            std::cout << "Retrieve: successful" << std::endl;
         }
         else {
             char aux[2];
             nRead = read(sfd, aux, 1);
             if (!nRead) {
-                cout << "Retrieve: cloud not read" << endl;
-                close(sfd);
+                std::cout << "Retrieve: cloud not read" << std::endl;
+                closeAllConnections();
                 exit(EXIT_FAILURE);
             }
             strcat(status, aux);
             if (!strcmp(status, "EOF\n"))
-                cout << "Retrieve: file not available" << endl;
+                std::cout << "Retrieve: file not available" << std::endl;
             else if (!strcmp(status, "NOK\n")) {
-                cout << "Retrieve: no content available in the FS for respective user" << endl;
-                close(sfd);
+                std::cout << "Retrieve: no content available in the FS for respective user" << std::endl;
+                closeAllConnections();
                 exit(EXIT_FAILURE);
             }
             else if (!strcmp(status, "INV\n")) {
-                cout << "Retrieve: AS validation error of the provided TID" << endl;
-                close(sfd);
+                std::cout << "Retrieve: AS validation error of the provided TID" << std::endl;
+                closeAllConnections();
                 exit(EXIT_FAILURE);
             }
             else if (!strcmp(status, "ERR\n")) {
-                cout << "Retrieve: request is not correctly formulated" << endl;
-                close(sfd);
+                std::cout << "Retrieve: request is not correctly formulated" << std::endl;
+                closeAllConnections();
                 exit(EXIT_FAILURE);
             }
         }
@@ -237,34 +246,34 @@ void receiveFromServer(int sfd) {
     if (!strcmp(command, "RUP ")) {
         nRead = read(sfd, status, 5);
         if (!strcmp(status, "OK\n"))
-            cout << "Upload: successful" << endl;
+            std::cout << "Upload: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
-            cout << "Upload: not successful" << endl;
+            std::cout << "Upload: not successful" << std::endl;
             // close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "DUP\n")) {
-            cout << "Upload: file already existed" << endl;
+            std::cout << "Upload: file already existed" << std::endl;
             // close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "FULL\n")) {
-            cout << "Upload: 15 files were previously uploaded by this User" << endl;
+            std::cout << "Upload: 15 files were previously uploaded by this User" << std::endl;
             // close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "INV\n")) {
-            cout << "Upload: AS validation error of the provided TID" << endl;
+            std::cout << "Upload: AS validation error of the provided TID" << std::endl;
             // close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "ERR\n")) {
-            cout << "Upload: UPL request is not correctly formulated" << endl;
+            std::cout << "Upload: UPL request is not correctly formulated" << std::endl;
             // close(sfd);
             // exit(EXIT_FAILURE);
         }
         else {
-            close(sfd);
+            closeAllConnections();
             exit(EXIT_FAILURE);
         }
         closeFSConnection();
@@ -272,24 +281,24 @@ void receiveFromServer(int sfd) {
     if (!strcmp(command, "RDL ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
-            cout << "Delete: successful" << endl;
+            std::cout << "Delete: successful" << std::endl;
         else if (!strcmp(status, "EOF\n")) {
-            cout << "Delete: file not available" << endl;
+            std::cout << "Delete: file not available" << std::endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "NOK\n")) {
-            cout << "Delete: UID does not exist" << endl;
+            std::cout << "Delete: UID does not exist" << std::endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "INV\n")) {
-            cout << "Delete: AS validation error of the provided TID" << endl;
+            std::cout << "Delete: AS validation error of the provided TID" << std::endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "ERR\n")) {
-            cout << "Delete: DEL request is not correctly formulated" << endl;
+            std::cout << "Delete: DEL request is not correctly formulated" << std::endl;
             close(sfd);
             exit(EXIT_FAILURE);
         }
@@ -302,19 +311,19 @@ void receiveFromServer(int sfd) {
     if (!strcmp(command, "RRM ")) {
         read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
-            cout << "Remove: successful" << endl;
+            std::cout << "Remove: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
-            cout << "Remove: UID does not exist" << endl;
+            std::cout << "Remove: UID does not exist" << std::endl;
             close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "INV\n")) {
-            cout << "Remove: AS validation error of the provided TID" << endl;
+            std::cout << "Remove: AS validation error of the provided TID" << std::endl;
             close(sfd);
             // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "ERR\n")) {
-            cout << "Remove: REM request is not correctly formulated" << endl;
+            std::cout << "Remove: REM request is not correctly formulated" << std::endl;
             close(sfd);
             // exit(EXIT_FAILURE);
         }
@@ -356,6 +365,7 @@ void processCommands() {
         for (int fd = 0; fd < maxfd + 1; fd++)
             if (FD_ISSET(fd, &readfds))
                 close(fd);
+        closeAllConnections();
         exit(EXIT_SUCCESS);
     }
     else if (!strcmp(command, "login")) {
@@ -403,7 +413,7 @@ void processCommands() {
         
         FILE *file = fopen(Fname, "rb");
         if (file == NULL) {
-            cout << "Upload: file does not exist" << endl;
+            std::cout << "Upload: file does not exist" << std::endl;
             closeFSConnection();
             exit(EXIT_FAILURE);
         }
@@ -457,7 +467,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     if (connect(ASClientTCP, resASClient->ai_addr, resASClient->ai_addrlen) == -1) {
-        cout << "no connect" << endl;
+        std::cout << "no connect" << std::endl;
         close(ASClientTCP);
         exit(EXIT_FAILURE);
     }
@@ -486,6 +496,7 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(FSClientTCP, &readfds)) {
+                    printf("receive from fs\n");
                     receiveFromServer(FSClientTCP);
                     break;
                 }

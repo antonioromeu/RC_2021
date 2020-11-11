@@ -15,11 +15,14 @@ pd:
 as:
 	$(CC) $(CFLAGS) as.cpp -o as
 
+fs:
+	$(CC) $(CFLAGS) fs.cpp -o fs
+
 user:
 	$(CC) $(CFLAGS) user.cpp -o user
 
 clean:
 	@echo Cleaning...
-	rm -f pd user as
+	rm -f pd user as fs
 	rm -r USERS
 	rm -r *.dSYM
