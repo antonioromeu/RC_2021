@@ -52,7 +52,6 @@ void closeAllConnections() {
 }
 
 void sendToServer(int sfd, char *buf) {
-    std::cout << buf << std::endl;
     if (write(sfd, buf, strlen(buf)) == -1) {
         fprintf(stderr, "Failed write to server\n");
         closeAllConnections();
@@ -126,7 +125,6 @@ void receiveFromServer(int sfd) {
     if (!strcmp(command, "RAU ")) {
         nRead = read(sfd, TID, 4);
         TID[nRead] = '\0';
-        printf("TID recebido as para o pd: %s", TID);
         if (!strcmp(TID, "0")) {
             std::cout << "Authentication: failed" << std::endl;
             closeAllConnections();
@@ -467,7 +465,6 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     if (connect(ASClientTCP, resASClient->ai_addr, resASClient->ai_addrlen) == -1) {
-        std::cout << "no connect" << std::endl;
         close(ASClientTCP);
         exit(EXIT_FAILURE);
     }
@@ -496,7 +493,6 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (FD_ISSET(FSClientTCP, &readfds)) {
-                    printf("receive from fs\n");
                     receiveFromServer(FSClientTCP);
                     break;
                 }

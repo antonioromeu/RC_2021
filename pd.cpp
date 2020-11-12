@@ -91,7 +91,6 @@ char *receiveFromSocket(int socket) {
     if (socket == clientUDP) {
         n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClient, &addrlenClient);
         buffer[n] = '\0';
-        std::cout << buffer << " no clientUDP" << std::endl;
         sscanf(buffer, "%s ", command);
         if (!strcmp(command, "RRG")) {
             sscanf(buffer, "%s %s", command, status);
@@ -122,7 +121,6 @@ char *receiveFromSocket(int socket) {
     if (socket == serverUDP) {
         n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrServer, &addrlenServer);
         buffer[n] = '\0';
-        std::cout << buffer << " no serverUDP" << std::endl;
         if (n != -1)
             processASAnswer(buffer);
     }

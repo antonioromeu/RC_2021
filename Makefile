@@ -24,5 +24,4 @@ user:
 clean:
 	@echo Cleaning...
 	rm -f pd user as fs
-	rm -r USERS
-	rm -r *.dSYM
+	rm -r ./asUSERS ./fsUSERS
