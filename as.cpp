@@ -1,7 +1,7 @@
 #include "aux.h"
 
 fd_set readfds;
-int out_fds, sfd, afd = 0, serverUDP, clientUDP, masterTCP, FSServerUDP, s, newSocket;
+int out_fds, sfd, afd = 0, serverUDP, clientUDP, masterTCP, s, newSocket;
 char PDIP[50];
 char PDport[6]= "57032";
 char ASIP[50] = "localhost";
@@ -33,45 +33,41 @@ char fdFile[128];
 char auxBuffer[128];
 char states[10][128];
   
-int master_socket, addrlen, new_socket, clientsFD[10], max_clients = 10, activity, i, valread, fd, maxFD;
-struct sockaddr_in address;
+int master_socket, addrlen, new_socket, clientsFD[10], max_clients = 10;
+int activity, i, valread, fd, maxFD;
 
-socklen_t addrlenUDP, addrlenClientUDP, addrlenFSServerUDP, addrlenTCP;
-struct addrinfo hintsUDP, hintsClientUDP, hintsFSServerUDP, hintsTCP, *resUDP, *resFSServerUDP, *resClientUDP, *resTCP;
-struct sockaddr_in addrUDP, addrClientUDP, addrFSServerUDP, addrTCP;
+socklen_t addrlenUDP, addrlenClientUDP, addrlenTCP;
+struct addrinfo hintsUDP, hintsClientUDP, hintsTCP;
+struct addrinfo *resUDP, *resClientUDP, *resTCP;
+struct sockaddr_in addrUDP, addrClientUDP, addrTCP;
 
 void parseArgs(int argc, char *argv[]) {
     if (argc < 1 || argc > 9) {
         printf("Usage: %s host port msg...", argv[0]);
         exit(EXIT_FAILURE);
     }
-    for (int i = 1; i < argc; i += 2) {
+    for (int i = 1; i < argc; i += 2)
         if (!strcmp(argv[i], "-p"))
             strcpy(ASport, argv[i]);
-    }
 }
 
 void closeAllConnections() {
     close(clientUDP);
     close(serverUDP);
-    close(FSServerUDP);
     close(masterTCP);
-    for (int i = 0; i < max_clients; i++) {
+    for (int i = 0; i < max_clients; i++)
         if (clientsFD[i])
             close(clientsFD[i]);
-    }
     freeaddrinfo(resClientUDP);
-    freeaddrinfo(resFSServerUDP);
     freeaddrinfo(resUDP);
     freeaddrinfo(resTCP);
 }
 
 void sendUDP(int socket, char *buf) {
-    std::cout << "no send para o pd: " << buf << std::endl;
     int n = 0;
-    if (socket == serverUDP) 
+    if (socket == serverUDP)
         n = sendto(socket, buf, strlen(buf), 0, (struct sockaddr*) &addrUDP, addrlenUDP);
-    else if (socket == clientUDP) 
+    else if (socket == clientUDP)
         n = sendto(socket, buf, strlen(buf), 0, resClientUDP->ai_addr, resClientUDP->ai_addrlen);
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
@@ -202,7 +198,6 @@ void receiveServerUDP(int socket) {
                 FILE *file;
                 file = fopen(passFile, "w");
                 fwrite(pass, 1, strlen(pass), file);
-                std::cout << pass << " no reg" << std::endl;
                 fclose(file);
                 
                 const char *args3[5] = {"./asUSERS/", UID, "/", UID, "_reg.txt\0"};
@@ -211,7 +206,6 @@ void receiveServerUDP(int socket) {
                 strcpy(buffer, createString(args4, 3));
                 file = fopen(regFile, "w");
                 fwrite(buffer, 1, strlen(buffer), file);
-                std::cout << buffer << " no reg1" << std::endl;
                 fclose(file);
 
                 strcat(status, "OK\n");
@@ -225,20 +219,28 @@ void receiveServerUDP(int socket) {
         strcat(auxBuffer, status);
     }
     if (!strcmp(command, "UNR")) {
+        memset(buffer, '\0', strlen(buffer));
+        memset(auxBuffer, '\0', strlen(auxBuffer));
         memset(status, '\0', strlen(status));
+        memset(UID, '\0', strlen(UID));
+        memset(pass, '\0', strlen(pass));
+        memset(newdir, '\0', strlen(newdir));
         sscanf(buffer, "%s %s %s", command, UID, pass);
-        if (checkDir(UID)) {
+        const char *args[4] = {"./asUSERS/", UID, "/", "\0"};
+        strcpy(newdir, createString(args, 4));
+        DIR* dir = opendir(newdir);
+        if (dir) {
             const char *args[5] = {"./asUSERS/", UID, "/", UID, "_reg.txt\0"};
             strcpy(newdir, createString(args, 5));
             remove(newdir);
-            strcat(status, "OK\n");
+            const char *args2[1] = {"RUN OK\n"};
+            strcpy(auxBuffer, createString(args2, 1));
         }
         else {
-            printf("Unable to remove ./asUSERS/%s/%s_reg.txt\n", UID, UID);
-            strcat(status, "NOK\n");
+            std::cout << "Unable to remove ./asUSERS/" <<  UID << "/" <<  UID << "_reg.txt" << std::endl;
+            const char *args[1] = {"RUN NOK\n"};
+            strcpy(auxBuffer, createString(args, 1));
         }
-        strcat(auxBuffer, "RUN ");
-        strcat(auxBuffer, status);
     }
     if (!strcmp(command, "VLD")) {
         sscanf(buffer, "%s %s %s", command, UID, TID);
@@ -257,8 +259,7 @@ void receiveServerUDP(int socket) {
         fread(buffer, 1, 128, file);
         fclose(file);
         sscanf(buffer, "%s %s", auxBuffer, Fop);
-        itoa(s, auxBuffer, strlen(auxBuffer));
-        memset(auxBuffer, '\0', strlen(auxBuffer));
+        memset(buffer, '\0', strlen(buffer));
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(Fop, "%s %s", Fop, Fname);
             const char *args1[9] = {"CNF ", UID, " ", TID, " ", Fop, " ", Fname, "\n"};
@@ -268,19 +269,10 @@ void receiveServerUDP(int socket) {
             const char *args1[8] = {"CNF ", UID, " ", TID, " ", Fop, " ", "\n"};
             sendUDP(socket, createString(args1, 8));
         }
-        memset(buffer, '\0', strlen(buffer));
-        std::cout << filename << " filename" << std::endl;
-        memset(auxBuffer, '\0', strlen(auxBuffer));
         file = fopen(filename, "w");
-        std::cout << auxBuffer << " auxBuffer" << std::endl;
-        std::cout << buffer << " bffer" << std::endl;
-        itoa(s, auxBuffer, strlen(auxBuffer));
-        std::cout << s << " s" << std::endl;
-        strcpy(buffer, auxBuffer);
-        std::cout << buffer << " bffer" << std::endl;
-        fwrite(buffer, 1, 128, file);
-        std::cout << buffer << " cnf" << std::endl;
+        fwrite(auxBuffer, 1, 128, file);
         fclose(file);
+        memset(filename, '\0', strlen(filename));
         memset(auxBuffer, '\0', strlen(auxBuffer));
         return;
     }
@@ -310,7 +302,6 @@ void receiveTCP(int socket) {
             itoa(socket, buffer, 128);
             file = fopen(fdFile, "w");
             fwrite(buffer, 1, strlen(buffer), file);
-            std::cout << buffer << " no log" << std::endl;
             fclose(file);
         }
         else if (strcmp(UID, recvUID) || strcmp(pass, recvPass))
@@ -322,7 +313,6 @@ void receiveTCP(int socket) {
     }
     if (!strcmp(command, "REQ")) {
         char aux[128];
-        std::cout << "no req" << std::endl;
         memset(aux, '\0', strlen(aux));
         memset(auxBuffer, '\0', strlen(auxBuffer));
 
@@ -336,10 +326,8 @@ void receiveTCP(int socket) {
         strcpy(fdFile, createString(args1, 5));
         FILE *file = fopen(fdFile, "r");
         n = fread(auxBuffer, 1, 128, file);
-        std::cout << "fop" << Fop << std::endl;
         fclose(file);
         sscanf(auxBuffer, "%s ", aux); //socket que esta no file
-        std::cout << "no req1" << std::endl;
         memset(auxBuffer, '\0', strlen(auxBuffer));
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s %s %s", command, UID, RID, Fop, Fname);
@@ -349,18 +337,12 @@ void receiveTCP(int socket) {
             strcpy(auxBuffer, createString(args2, 6));
         }
         else if (Fop[0] == 'L' || Fop[0] == 'X') {
-            std::cout << "no req L" << std::endl; 
             const char *args[7] = {"VLC ", UID, " ", VC, " ", Fop, "\n"};
-            std::cout << "no req1" << std::endl;
             strcpy(buffer, createString(args, 7));
             sendUDP(clientUDP, buffer);
-            std::cout << "no req2" << std::endl;
             const char *args2[4] = {aux, " ", Fop, "\0"};
-            std::cout << "no req3" << std::endl;
             strcpy(auxBuffer, createString(args2, 4));
-        std::cout << "no req4" << std::endl;
         }
-        std::cout << "do auxBuffer do req " << auxBuffer << std::endl; 
         FILE *file1 = fopen(fdFile, "w");
         fwrite(auxBuffer, 1, strlen(auxBuffer), file1);
         memset(auxBuffer, '\0', strlen(auxBuffer));
@@ -408,27 +390,6 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    // /*------------FSServerUDP Socket---------*/
-    // FSServerUDP = socket(AF_INET, SOCK_DGRAM, 0);
-    // if (FSServerUDP == -1)
-    //     exit(1);
-    // memset(&hintsFSServerUDP, 0, sizeof hintsFSServerUDP);
-    // hintsFSServerUDP.ai_family = AF_INET;
-    // hintsFSServerUDP.ai_socktype = SOCK_DGRAM;
-    // hintsFSServerUDP.ai_flags = AI_PASSIVE;
-    // s = getaddrinfo(FSIP, FSport, &hintsFSServerUDP, &resFSServerUDP);
-    // // s = getaddrinfo(NULL, FSport, &hintsFSServerUDP, &resFSServerUDP);
-    // if (s != 0) {
-    //     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-    //     close(FSServerUDP);
-    //     exit(EXIT_FAILURE);
-    // }
-    // addrlenFSServerUDP = sizeof(addrFSServerUDP);
-    // if (bind(FSServerUDP, resFSServerUDP->ai_addr, resFSServerUDP->ai_addrlen) < 0 ) {
-    //     perror("Bind failed");
-    //     exit(EXIT_FAILURE);
-    // }
-
     /*------------masterTCP Socket---------*/
     for (i = 0; i < max_clients; i++)
         clientsFD[i] = 0;
@@ -459,7 +420,6 @@ int main(int argc, char **argv) {
     while (1) {
         FD_ZERO(&readfds);
         FD_SET(serverUDP, &readfds);
-        // FD_SET(FSServerUDP, &readfds);
         FD_SET(clientUDP, &readfds);
         FD_SET(masterTCP, &readfds);
         maxFD = masterTCP;
@@ -484,11 +444,6 @@ int main(int argc, char **argv) {
                 perror("Select\n");
                 exit(EXIT_FAILURE);
             default:
-                // if (FD_ISSET(FSServerUDP, &readfds)) {
-                //     printf("a receber fs\n");
-                //     receiveServerUDP(FSServerUDP);
-                //     break;
-                // }
                 if (FD_ISSET(serverUDP, &readfds)) {
                     receiveServerUDP(serverUDP);
                     break;

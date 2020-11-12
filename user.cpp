@@ -207,6 +207,8 @@ void receiveFromServer(int sfd) {
                 memset(buffer, '\0', strlen(buffer));
                 nRead = read(sfd, buffer, reading);
                 intFilesize -= nRead;
+                if (nRead < reading)
+                    nRead -= 1;
                 fwrite(buffer, 1, nRead, file);
             } while (intFilesize > 0);
             fclose(file);
@@ -242,6 +244,7 @@ void receiveFromServer(int sfd) {
         closeFSConnection();
     }
     if (!strcmp(command, "RUP ")) {
+        std::cout << "a entrar" << std::endl;
         nRead = read(sfd, status, 5);
         if (!strcmp(status, "OK\n"))
             std::cout << "Upload: successful" << std::endl;
@@ -428,6 +431,7 @@ void processCommands() {
             memset(buffer, '\0', strlen(buffer));
             nRead = fread(buffer, 1, reading, file);
             intFilesize -= nRead;
+            std::cout << "buffer no user " << buffer << std::endl;
             sendToServer(FSClientTCP, buffer);
         } while (intFilesize > 0);
         fclose(file);

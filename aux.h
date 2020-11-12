@@ -104,32 +104,32 @@ char* itoa(int num, char *str, int base) {
     return str; 
 } 
 
-bool checkDir(char *subdir) {
+bool checkDir(char *maindir) {
     DIR *d;
     struct dirent *dir;
-    d = opendir("./USERS/");
+    d = opendir(maindir);
     if (d) {
         while ((dir = readdir(d)) != NULL) {
-            if (!strcmp(dir->d_name, subdir)) {
-                closedir(d);
+            if (!strcmp(dir->d_name, maindir)) {
                 return true;
             }
         }
-        closedir(d);
-        return false;
     }
+    closedir(d);
     return false;
 }
 
-int countFiles(char *subdir) {
+int countFiles(char *maindir) {
     DIR *d;
     struct dirent *dir;
-    d = opendir("./USERS/");
+    d = opendir(maindir);
     int i = 0;
     if (d) {
-        while ((dir = readdir(d)) != NULL)
-            if (!strcmp(dir->d_name, subdir))
-                i++;
+        while ((dir = readdir(d)) != NULL) {
+            if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."))
+                continue;
+            i++;
+        }
         closedir(d);
     }
     return i;

@@ -110,8 +110,7 @@ char *receiveFromSocket(int socket) {
             sscanf(buffer, "%s %s", command, status);
             if (!strcmp(status, "OK")) {
                 std::cout << "Unregister: successful" << std::endl;
-                close(clientUDP);
-                close(serverUDP);
+                closeAllConnections();
                 exit(EXIT_SUCCESS);
             }
             if (!strcmp(status, "NOK"))
@@ -136,6 +135,7 @@ void processCommands() {
     fgets(buffer, 50, stdin);
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "exit")) {
+        std::cout << UID << std::endl;
         const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
         sendToServer(clientUDP, createString(args, 5));
     }
