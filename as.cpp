@@ -123,55 +123,17 @@ void receiveClientUDP(int socket) {
             strcpy(auxBuffer, createString(args, 3));
         }
         memset(buffer, '\0', strlen(buffer));
+        memset(command, '\0', strlen(command));
         const char *args[5] = {"./asUSERS/", UID, "/", UID, "_fd.txt\0"};
         strcpy(filename, createString(args, 5));
         FILE *file = fopen(filename, "r");
         fread(buffer, 1, 128, file);
         fclose(file);
-        s = atoi(buffer);
+        sscanf(buffer, "%s ", command);
+        s = atoi(command);
         sendTCP(s, auxBuffer);
         memset(auxBuffer, '\0', strlen(auxBuffer));
     }
-    // if (!strcmp(command, "VLD")) {
-    //     printf("ENTROU\n");
-    //     sscanf(buffer, "%s %s %s", command, UID, TID);
-    //     printf("TID: %s\n", TID);
-    //     if (!strcmp(TID, "0")) {
-    //         printf("o tid é 0\n");
-    //         strcpy(Fop, "E");
-    //         const char *args[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
-    //         sendUDP(socket, createString(args, 7));
-    //         return;
-    //     }
-    //     memset(buffer, '\0', strlen(buffer));
-    //     memset(auxBuffer, '\0', strlen(auxBuffer));
-    //     const char *args[5] = {"USERS/", UID, "/", UID, "_fd.txt"};
-    //     strcpy(filename, createString(args, 5));
-    //     FILE *file = fopen(filename, "r");
-    //     fread(buffer, 1, 128, file);
-    //     fclose(file);
-    //     sscanf(buffer, "%s %s", auxBuffer, Fop);
-    //     itoa(s, auxBuffer, strlen(auxBuffer));
-    //     memset(auxBuffer, '\0', strlen(auxBuffer));
-    //     if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-    //         sscanf(Fop, "%s %s", Fop, Fname);
-    //         const char *args1[9] = {"CNF ", UID, " ", TID, " ", Fop, " ", Fname, "\n"};
-    //         sendUDP(socket, createString(args1, 9));
-    //     }
-    //     else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
-    //         const char *args1[8] = {"CNF ", UID, " ", TID, " ", Fop, " ", "\n"};
-    //         sendUDP(socket, createString(args1, 8));
-    //     }
-    //     memset(buffer, '\0', strlen(buffer));
-    //     memset(auxBuffer, '\0', strlen(auxBuffer));
-    //     file = fopen(filename, "w");
-    //     itoa(s, auxBuffer, strlen(auxBuffer));
-    //     strcpy(buffer, auxBuffer);
-    //     strcat(buffer, "\0");
-    //     fwrite(buffer, 1, 128, file);
-    //     fclose(file);
-    //     memset(auxBuffer, '\0', strlen(auxBuffer));
-    // }
 }
 
 void receiveServerUDP(int socket) {
@@ -219,7 +181,7 @@ void receiveServerUDP(int socket) {
         strcat(auxBuffer, status);
     }
     if (!strcmp(command, "UNR")) {
-        memset(buffer, '\0', strlen(buffer));
+        // memset(buffer, '\0', strlen(buffer));
         memset(auxBuffer, '\0', strlen(auxBuffer));
         memset(status, '\0', strlen(status));
         memset(UID, '\0', strlen(UID));
@@ -230,6 +192,7 @@ void receiveServerUDP(int socket) {
         strcpy(newdir, createString(args, 4));
         DIR* dir = opendir(newdir);
         if (dir) {
+            closedir(dir);
             const char *args[5] = {"./asUSERS/", UID, "/", UID, "_reg.txt\0"};
             strcpy(newdir, createString(args, 5));
             remove(newdir);
@@ -243,6 +206,7 @@ void receiveServerUDP(int socket) {
         }
     }
     if (!strcmp(command, "VLD")) {
+        std::cout << "no vld" << std::endl;
         sscanf(buffer, "%s %s %s", command, UID, TID);
         if (!strcmp(TID, "0")) {
             strcpy(Fop, "E");
@@ -257,17 +221,21 @@ void receiveServerUDP(int socket) {
         strcpy(filename, createString(args, 5));
         FILE *file = fopen(filename, "r");
         fread(buffer, 1, 128, file);
+        std::cout << "buffer: " << buffer << std::endl;
         fclose(file);
         sscanf(buffer, "%s %s", auxBuffer, Fop);
         memset(buffer, '\0', strlen(buffer));
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
-            sscanf(Fop, "%s %s", Fop, Fname);
+            sscanf(Fop, "%s %s", buffer, Fname);
+            memset(Fop, '\0', strlen(Fop));
+            strcpy(Fop, buffer);
+            std::cout << "fname: " << Fname << std::endl;
             const char *args1[9] = {"CNF ", UID, " ", TID, " ", Fop, " ", Fname, "\n"};
             sendUDP(socket, createString(args1, 9));
         }
         else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
-            const char *args1[8] = {"CNF ", UID, " ", TID, " ", Fop, " ", "\n"};
-            sendUDP(socket, createString(args1, 8));
+            const char *args1[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
+            sendUDP(socket, createString(args1, 7));
         }
         file = fopen(filename, "w");
         fwrite(auxBuffer, 1, 128, file);
@@ -320,8 +288,8 @@ void receiveTCP(int socket) {
         srand(time(0));
         sprintf(VC, "%d", rand() % 9000 + 1000);
         sscanf(buffer, "%s %s %s %s", command, UID, RID, Fop);
-
-        memset(buffer, '\0', strlen(buffer));
+        std::cout << buffer << " buffer do reg" << std::endl;
+        // memset(buffer, '\0', strlen(buffer));
         const char *args1[5] = {"./asUSERS/", UID, "/", UID, "_fd.txt\0"};
         strcpy(fdFile, createString(args1, 5));
         FILE *file = fopen(fdFile, "r");
@@ -331,6 +299,7 @@ void receiveTCP(int socket) {
         memset(auxBuffer, '\0', strlen(auxBuffer));
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s %s %s", command, UID, RID, Fop, Fname);
+            std::cout << Fname << " fname do user" << std::endl;
             const char *args[9] = {"VLC ", UID, " ", VC, " ", Fop, " ", Fname, "\n"};
             sendUDP(clientUDP, createString(args, 9));
             const char *args2[6] = {aux, " ", Fop, " ", Fname, "\0"};
@@ -344,6 +313,7 @@ void receiveTCP(int socket) {
             strcpy(auxBuffer, createString(args2, 4));
         }
         FILE *file1 = fopen(fdFile, "w");
+        std::cout << auxBuffer << " a escrever no fd" << std::endl;
         fwrite(auxBuffer, 1, strlen(auxBuffer), file1);
         memset(auxBuffer, '\0', strlen(auxBuffer));
         fclose(file1);

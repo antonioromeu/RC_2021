@@ -198,19 +198,23 @@ void receiveFromServer(int sfd) {
                 read(sfd, &c, 1);
                 strncat(filesize, &c, 1);
             } while (isdigit(c));
-
+            std::cout << "aqui" << std::endl;
             /*------Reads data------*/
             int reading = 1024;
             int intFilesize = atoi(filesize);;
             FILE *file = fopen(Fname, "wb");
             do {
+                std::cout << "no while" << std::endl;
                 memset(buffer, '\0', strlen(buffer));
                 nRead = read(sfd, buffer, reading);
+                std::cout << "depois do read" << std::endl;
                 intFilesize -= nRead;
                 if (nRead < reading)
                     nRead -= 1;
+                std::cout << buffer << " buffer" << std::endl;
                 fwrite(buffer, 1, nRead, file);
             } while (intFilesize > 0);
+            std::cout << "antes do close" << std::endl;
             fclose(file);
             std::cout << "Retrieve: successful" << std::endl;
         }
@@ -244,7 +248,6 @@ void receiveFromServer(int sfd) {
         closeFSConnection();
     }
     if (!strcmp(command, "RUP ")) {
-        std::cout << "a entrar" << std::endl;
         nRead = read(sfd, status, 5);
         if (!strcmp(status, "OK\n"))
             std::cout << "Upload: successful" << std::endl;
@@ -377,11 +380,13 @@ void processCommands() {
         sendToServer(ASClientTCP, createString(args, 5));
     }
     else if (!strcmp(command, "req")) {
+        std::cout << buffer << " buffer" << std::endl;
         sscanf(buffer, "%s %s", command, Fop);
         srand(time(0));
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s", command, Fop, Fname);
+            std::cout << Fname << " fname" << std::endl;
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -415,8 +420,7 @@ void processCommands() {
         FILE *file = fopen(Fname, "rb");
         if (file == NULL) {
             std::cout << "Upload: file does not exist" << std::endl;
-            closeFSConnection();
-            exit(EXIT_FAILURE);
+            return;
         }
         fseek(file, 0, SEEK_END);
         int intFilesize = ftell(file);
@@ -430,8 +434,10 @@ void processCommands() {
         do {
             memset(buffer, '\0', strlen(buffer));
             nRead = fread(buffer, 1, reading, file);
+            // if (nRead < reading)
+            //     nRead -= 1;
             intFilesize -= nRead;
-            std::cout << "buffer no user " << buffer << std::endl;
+            // buffer[nRead] = '\0';
             sendToServer(FSClientTCP, buffer);
         } while (intFilesize > 0);
         fclose(file);
@@ -475,9 +481,8 @@ int main(int argc, char **argv) {
     
     while (1) {
         // FD_ZERO(&readfds);
-        FD_SET(afd, &readfds); // i.e reg 92427 ...
-        FD_SET(ASClientTCP, &readfds); // i.e VLC 9999
-        // FD_SET(FSClientTCP, &readfds); // i.e REG OK
+        FD_SET(afd, &readfds);
+        FD_SET(ASClientTCP, &readfds);
         maxfd = max(ASClientTCP, FSClientTCP);
         out_fds = select(maxfd + 1, &readfds, (fd_set *) NULL, (fd_set *) NULL, NULL);
         switch (out_fds) {

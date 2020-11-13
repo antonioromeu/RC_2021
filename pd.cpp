@@ -135,7 +135,6 @@ void processCommands() {
     fgets(buffer, 50, stdin);
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "exit")) {
-        std::cout << UID << std::endl;
         const char *args[5] = {"UNR ", UID, " ", pass, "\n"};
         sendToServer(clientUDP, createString(args, 5));
     }
