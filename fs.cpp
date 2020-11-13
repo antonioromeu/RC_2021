@@ -77,9 +77,7 @@ void sendUDP(int socket, char *buf) {
 }
 
 void sendTCP(int socket, char *buf) {
-    std::cout << "buffer que esta a escrever: " << buf << std::endl;
     int n = write(socket, buf, strlen(buf));
-    std::cout << "buffer que esta a escrever: " << buf << " com n: " << n << std::endl;
     memset(buf, '\0', strlen(buf));
     if (n == -1) {
         fprintf(stderr, "partial/failed write\n");
@@ -134,6 +132,10 @@ void receiveUDP(int socket) {
             }
             if (!strcmp(command, "D")) {
                 const char *args1[1] = {"RDL INV\n"};
+                sendTCP(s, createString(args1, 1));
+            }
+            if (!strcmp(command, "X")) {
+                const char *args1[1] = {"REM INV\n"};
                 sendTCP(s, createString(args1, 1));
             }
         }
@@ -208,7 +210,6 @@ void receiveUDP(int socket) {
                 fseek(file, 0, SEEK_END);
                 int intFilesize = ftell(file);
                 rewind(file);
-                std::cout << intFilesize << std::endl;
                 do {
                     memset(buffer, '\0', strlen(buffer));
                     nRead = fread(buffer, 1, reading, file);
@@ -231,6 +232,21 @@ void receiveUDP(int socket) {
             const char *args[1] = {"RDL OK\n"};
             sendTCP(s, createString(args, 1));
         }
+        else if (Fop[0] == 'X') {
+            const char *args6[3] = {"rm -r ./asUSERS/", UID, "\0"};
+            memset(newdir, '\0', strlen(newdir));
+            strcpy(newdir, createString(args6, 3));
+            removeDir(newdir);
+
+            /*-----------Verifica se a diretoria existe---------*/
+            const char *args5[3] = {"rm -r ./fsUSERS/", UID, "\0"};
+            memset(newdir, '\0', strlen(newdir));
+            strcpy(newdir, createString(args5, 3));
+            removeDir(newdir);
+            const char *args[1] = {"RRM OK\n"};
+            sendTCP(s, createString(args, 1));
+            return;
+        }
         memset(buffer, '\0', strlen(buffer));
         const char *args4[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
         strcpy(filename, createString(args4, 5));
@@ -240,6 +256,7 @@ void receiveUDP(int socket) {
         fclose(file);
         memset(auxBuffer, '\0', strlen(auxBuffer));
     }
+    
 }
 
 void receiveTCP(int socket) {
@@ -385,9 +402,9 @@ void receiveTCP(int socket) {
         int intFilesize = atoi(Fsize);
         do {
             memset(buffer, '\0', strlen(buffer));
-            nRead = read(socket, buffer, reading);
+            read(socket, buffer, reading);
+            nRead = fwrite(buffer, 1, strlen(buffer), file);
             intFilesize -= nRead;
-            fwrite(buffer, 1, nRead, file);
         } while (intFilesize > 0);
         fclose(file);
 
@@ -499,6 +516,34 @@ void receiveTCP(int socket) {
         const char *args2[5] = {"VLD ", UID, " ", TID, "\n"};
         sendUDP(clientUDP, createString(args2, 5));
     }
+    if (!strcmp(command, "REM ")) {
+        memset(buffer, '\0', strlen(buffer));
+        read(socket, buffer, BUFSIZE);
+        sscanf(buffer, "%s %s", UID, TID);
+        if (!checkUID(UID) || (strlen(TID) != 4)) {
+            const char *args[1] = {"RRM ERR\n"};
+            sendTCP(socket, createString(args, 1));
+            return;
+        }
+
+        /*---------Guarda socket no fd--------*/
+        memset(filename, '\0', strlen(filename));
+        const char *args[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
+        strcpy(filename, createString(args, 5));
+        itoa(socket, auxBuffer, 128);
+        file = fopen(filename, "w");
+        if (file == NULL) {
+            int errnum = errno;
+            fprintf(stderr, "Value of errno: %d\n", errno);
+            fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
+        }
+        fwrite(auxBuffer, 1, strlen(auxBuffer), file);
+        fclose(file);
+
+        /*--------Envia mensagem ao AS--------*/
+        const char *args2[5] = {"VLD ", UID, " ", TID, "\n"};
+        sendUDP(clientUDP, createString(args2, 5));
+    }
 }
 
 int main(int argc, char **argv) {
@@ -577,7 +622,6 @@ int main(int argc, char **argv) {
                 exit(EXIT_FAILURE);
             default:
                 if (FD_ISSET(clientUDP, &readfds)) {
-                    std::cout << "a falar com um udp" << std::endl;
                     receiveUDP(clientUDP);
                     break;
                 }

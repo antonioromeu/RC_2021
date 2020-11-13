@@ -134,3 +134,7 @@ int countFiles(char *maindir) {
     }
     return i;
 }
+
+void removeDir(char *newdir) {
+    system(newdir);
+}

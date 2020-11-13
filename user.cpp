@@ -51,14 +51,15 @@ void closeAllConnections() {
     freeaddrinfo(resFSClient);
 }
 
-void sendToServer(int sfd, char *buf) {
-    std::cout << "buffer na funcao de send " << buf << std::endl;
-    if (write(sfd, buf, strlen(buf)) == -1) {
+int sendToServer(int sfd, char *buf) {
+    int n = write(sfd, buf, strlen(buf));
+    if (n == -1) {
         fprintf(stderr, "Failed write to server\n");
         closeAllConnections();
         exit(EXIT_FAILURE);
     }
     memset(buf, '\0', strlen(buf));
+    return n;
 }
 
 void closeFSConnection() {
@@ -173,7 +174,7 @@ void receiveFromServer(int sfd) {
                     nSpaces--;
                     if (!nSpaces)
                         break;
-                }
+                }\
                 if (isalnum(aux[0]) || aux[0] == '.' || aux[0] == '-' || aux[0] == '_' || aux[0] == ' ') {
                     aux[1] = '\0';
                     strcat(filename, aux);
@@ -282,7 +283,6 @@ void receiveFromServer(int sfd) {
     }
     if (!strcmp(command, "RDL ")) {
         nRead = read(sfd, status, 4);
-        std::cout << "status: " << status << std::endl; 
         if (!strcmp(status, "OK\n"))
             std::cout << "Delete: successful" << std::endl;
         else if (!strcmp(status, "EOF\n")) {
@@ -379,13 +379,11 @@ void processCommands() {
         sendToServer(ASClientTCP, createString(args, 5));
     }
     else if (!strcmp(command, "req")) {
-        std::cout << buffer << " buffer" << std::endl;
         sscanf(buffer, "%s %s", command, Fop);
         srand(time(0));
         sprintf(RID, "%d", rand() % 9000 + 1000);
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s", command, Fop, Fname);
-            std::cout << Fname << " fname" << std::endl;
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
             sendToServer(ASClientTCP, createString(args, 9));
         }
@@ -428,21 +426,18 @@ void processCommands() {
 
         const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, " "};
         sendToServer(FSClientTCP, createString(args, 9));
-        
         int reading = 1024;
+        int n;
         do {
             memset(buffer, '\0', strlen(buffer));
             nRead = fread(buffer, 1, reading, file);
-            intFilesize -= nRead;
-            std::cout << "a mandar para o fs: " << buffer << std::endl;
-            sendToServer(FSClientTCP, buffer);
-            std::cout << "ja enviou" << std::endl;
+            n = sendToServer(FSClientTCP, buffer);
+            intFilesize -= n;
         } while (intFilesize > 0);
         fclose(file);
         memset(buffer, '\0', strlen(buffer));
         strcpy(buffer, "\n");
         sendToServer(FSClientTCP, buffer);
-        std::cout << "a enviar o n" << std::endl;
     }
     else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
         openFSConnection();
