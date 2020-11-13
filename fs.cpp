@@ -175,9 +175,10 @@ void receiveUDP(int socket) {
                     rewind(file);
                     fclose(file);
                     itoa(intFilesize, Fsize, 10);
-                    const char *args3[4] = {filename, " ", Fsize, "\0"};
+                    const char *args3[4] = {filename, " ", Fsize, " \0"};
                     memset(auxBuffer, '\0', strlen(auxBuffer));
                     strcpy(auxBuffer, createString(args3, 4));
+                    std::cout << auxBuffer << " :auxbuffer" << std::endl;
                     sendTCP(s, auxBuffer);
                 }
                 closedir(d);
@@ -238,7 +239,6 @@ void receiveUDP(int socket) {
 }
 
 void receiveTCP(int socket) {
-    std::cout << "do tcp" << std::endl;
     FILE *file;
     memset(buffer, '\0', strlen(buffer));
     memset(command, '\0', strlen(command));
@@ -247,11 +247,14 @@ void receiveTCP(int socket) {
     memset(Fname, '\0', strlen(Fname));
     memset(Fsize, '\0', strlen(Fsize));
     memset(filename, '\0', strlen(filename));
-    int n = read(socket, buffer, BUFSIZE);
+    int n = read(socket, buffer, 4);
     buffer[n] = '\0';
-    sscanf(buffer, "%s ", command);
-    if (!strcmp(command, "LST")) {
-        sscanf(buffer, "%s %s %s", command, UID, TID);
+    strcpy(command, buffer);
+    // sscanf(buffer, "%s ", command);
+    if (!strcmp(command, "LST ")) {
+        memset(buffer, '\0', strlen(buffer));
+        read(socket, buffer, BUFSIZE);
+        sscanf(buffer, "%s %s", UID, TID);
         if (!checkUID(UID) || !(strlen(TID) == 4)) {
             const char *args[1] = {"RLS ERR\n"};
             sendTCP(socket, createString(args, 1));
@@ -281,12 +284,36 @@ void receiveTCP(int socket) {
         fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         fclose(file);
 
-        /*-----------Responde ao client-------*/
+        /*-----------Responde para o as-------*/
         const char *args1[5] = {"VLD ", UID, " ", TID, "\n"};
         sendUDP(clientUDP, createString(args1, 5));
     }
-    if (!strcmp(command, "UPL")) {
-        sscanf(buffer, "%s %s %s %s %s ", command, UID, TID, Fname, Fsize);
+    if (!strcmp(command, "UPL ")) {
+        memset(auxBuffer, '\0', strlen(auxBuffer));
+        memset(buffer, '\0', strlen(buffer));
+        int nSpaces = 4;
+
+        while (nSpaces) {
+            memset(auxBuffer, '\0', strlen(auxBuffer));
+            nRead = read(socket, auxBuffer, 1);
+            if (nRead <= 0)
+                break;
+            if (auxBuffer[0] == '\n')
+                nSpaces = 0;
+            if (auxBuffer[0] == ' ') {
+                nSpaces--;
+                if (!nSpaces)
+                    break;
+            }
+            if (isalnum(auxBuffer[0]) || auxBuffer[0] == '.' || auxBuffer[0] == '-' || auxBuffer[0] == '_' || auxBuffer[0] == ' ') {
+                auxBuffer[1] = '\0';
+                strcat(buffer, auxBuffer);
+            }
+            else if (auxBuffer[0] == '\n')
+                break;
+        }
+        std::cout << "buffer: " << buffer << std::endl;
+        sscanf(buffer, "%s %s %s %s ", UID, TID, Fname, Fsize);
         if (!checkUID(UID) || !(strlen(TID) == 4) || !checkFilename(Fname) || (strlen(Fsize) > 10)) {
             const char *args[1] = {"RUP ERR\n"};
             sendTCP(socket, createString(args, 1));
@@ -328,7 +355,7 @@ void receiveTCP(int socket) {
 
         /*--------Escreve file na pasta--------*/
         memset(newdir, '\0', strlen(newdir));
-        const char *args8[4] = {"./fsUSERS/", UID, "/files/","\0"};
+        const char *args8[4] = {"./fsUSERS/", UID, "/files/", "\0"};
         strcpy(newdir, createString(args8, 4));
         char N[128];
         itoa(countFiles(newdir), N, 128);
@@ -337,7 +364,11 @@ void receiveTCP(int socket) {
             sendTCP(socket, createString(args9, 1));
             return;
         }
-        sscanf(buffer, "%s %s %s %s %s ", command, UID, TID, Fname, Fsize);
+        memset(UID, '\0', strlen(UID));
+        memset(TID, '\0', strlen(TID));
+        memset(Fname, '\0', strlen(Fname));
+        memset(Fsize, '\0', strlen(Fsize));
+        sscanf(buffer, "%s %s %s %s ", UID, TID, Fname, Fsize);
         const char *args10[5] = {"./fsUSERS/", UID, "/files/", Fname, "\0"};
         memset(newdir, '\0', strlen(newdir));
         strcpy(newdir, createString(args10, 5));
@@ -351,20 +382,17 @@ void receiveTCP(int socket) {
         int intFilesize = atoi(Fsize);
         do {
             memset(buffer, '\0', strlen(buffer));
-            std::cout << "antes do read" << std::endl;
             nRead = read(socket, buffer, reading);
-            std::cout << "depois do read com buffer: " << buffer << std::endl;
             intFilesize -= nRead;
             if (nRead < reading)
                 nRead -= 1;
-            fwrite(buffer, 1, nRead, file);
+            fwrite(buffer, nRead, 1, file);
         } while (intFilesize > 0);
         fclose(file);
         const char *args11[1] = {"RUP OK\n"};
         sendTCP(socket, createString(args11, 1));
     }
-    if (!strcmp(command, "RTV")) {
-        std::cout << "entrou no tcp" << std::endl;
+    if (!strcmp(command, "RTV ")) {
         sscanf(buffer, "%s %s %s %s", command, UID, TID, Fname);
         if (!checkUID(UID) || !(strlen(TID) == 4) || !checkFilename(Fname)) {
             const char *args[1] = {"RRT ERR\n"};

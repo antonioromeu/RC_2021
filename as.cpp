@@ -235,6 +235,9 @@ void receiveServerUDP(int socket) {
         }
         else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
             const char *args1[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
+            std::cout << "uid: " << UID << std::endl;
+            std::cout << "tid: " << TID << std::endl;
+            std::cout << "fop: " << Fop << std::endl;
             sendUDP(socket, createString(args1, 7));
         }
         file = fopen(filename, "w");

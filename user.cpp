@@ -52,6 +52,7 @@ void closeAllConnections() {
 }
 
 void sendToServer(int sfd, char *buf) {
+    std::cout << "buffer na funcao de send " << buf << std::endl;
     if (write(sfd, buf, strlen(buf)) == -1) {
         fprintf(stderr, "Failed write to server\n");
         closeAllConnections();
@@ -198,23 +199,19 @@ void receiveFromServer(int sfd) {
                 read(sfd, &c, 1);
                 strncat(filesize, &c, 1);
             } while (isdigit(c));
-            std::cout << "aqui" << std::endl;
+
             /*------Reads data------*/
             int reading = 1024;
             int intFilesize = atoi(filesize);;
             FILE *file = fopen(Fname, "wb");
             do {
-                std::cout << "no while" << std::endl;
                 memset(buffer, '\0', strlen(buffer));
                 nRead = read(sfd, buffer, reading);
-                std::cout << "depois do read" << std::endl;
                 intFilesize -= nRead;
                 if (nRead < reading)
                     nRead -= 1;
-                std::cout << buffer << " buffer" << std::endl;
                 fwrite(buffer, 1, nRead, file);
             } while (intFilesize > 0);
-            std::cout << "antes do close" << std::endl;
             fclose(file);
             std::cout << "Retrieve: successful" << std::endl;
         }
@@ -249,6 +246,7 @@ void receiveFromServer(int sfd) {
     }
     if (!strcmp(command, "RUP ")) {
         nRead = read(sfd, status, 5);
+        status[nRead] = '\0';
         if (!strcmp(status, "OK\n"))
             std::cout << "Upload: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
@@ -282,6 +280,42 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
+    // if (!strcmp(command, "RUP ")) {
+    //     std::cout << "a entrar" << std::endl;
+    //     nRead = read(sfd, status, 5);
+    //     if (!strcmp(status, "OK\n"))
+    //         std::cout << "Upload: successful" << std::endl;
+    //     else if (!strcmp(status, "NOK\n")) {
+    //         std::cout << "Upload: not successful" << std::endl;
+    //         // close(sfd);
+    //         // exit(EXIT_FAILURE);
+    //     }
+    //     else if (!strcmp(status, "DUP\n")) {
+    //         std::cout << "Upload: file already existed" << std::endl;
+    //         // close(sfd);
+    //         // exit(EXIT_FAILURE);
+    //     }
+    //     else if (!strcmp(status, "FULL\n")) {
+    //         std::cout << "Upload: 15 files were previously uploaded by this User" << std::endl;
+    //         // close(sfd);
+    //         // exit(EXIT_FAILURE);
+    //     }
+    //     else if (!strcmp(status, "INV\n")) {
+    //         std::cout << "Upload: AS validation error of the provided TID" << std::endl;
+    //         // close(sfd);
+    //         // exit(EXIT_FAILURE);
+    //     }
+    //     else if (!strcmp(status, "ERR\n")) {
+    //         std::cout << "Upload: UPL request is not correctly formulated" << std::endl;
+    //         // close(sfd);
+    //         // exit(EXIT_FAILURE);
+    //     }
+    //     else {
+    //         closeAllConnections();
+    //         exit(EXIT_FAILURE);
+    //     }
+    //     closeFSConnection();
+    // }
     if (!strcmp(command, "RDL ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
@@ -435,15 +469,18 @@ void processCommands() {
             memset(buffer, '\0', strlen(buffer));
             nRead = fread(buffer, 1, reading, file);
             // if (nRead < reading)
-            //     nRead -= 1;
+            //         nRead -= 1;
             intFilesize -= nRead;
             // buffer[nRead] = '\0';
+            std::cout << "a mandar para o fs: " << buffer << std::endl;
             sendToServer(FSClientTCP, buffer);
+            std::cout << "ja enviou" << std::endl;
         } while (intFilesize > 0);
         fclose(file);
         memset(buffer, '\0', strlen(buffer));
         strcpy(buffer, "\n");
         sendToServer(FSClientTCP, buffer);
+        std::cout << "a enviar o n" << std::endl;
     }
     else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
         openFSConnection();
