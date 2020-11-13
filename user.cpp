@@ -280,44 +280,9 @@ void receiveFromServer(int sfd) {
         }
         closeFSConnection();
     }
-    // if (!strcmp(command, "RUP ")) {
-    //     std::cout << "a entrar" << std::endl;
-    //     nRead = read(sfd, status, 5);
-    //     if (!strcmp(status, "OK\n"))
-    //         std::cout << "Upload: successful" << std::endl;
-    //     else if (!strcmp(status, "NOK\n")) {
-    //         std::cout << "Upload: not successful" << std::endl;
-    //         // close(sfd);
-    //         // exit(EXIT_FAILURE);
-    //     }
-    //     else if (!strcmp(status, "DUP\n")) {
-    //         std::cout << "Upload: file already existed" << std::endl;
-    //         // close(sfd);
-    //         // exit(EXIT_FAILURE);
-    //     }
-    //     else if (!strcmp(status, "FULL\n")) {
-    //         std::cout << "Upload: 15 files were previously uploaded by this User" << std::endl;
-    //         // close(sfd);
-    //         // exit(EXIT_FAILURE);
-    //     }
-    //     else if (!strcmp(status, "INV\n")) {
-    //         std::cout << "Upload: AS validation error of the provided TID" << std::endl;
-    //         // close(sfd);
-    //         // exit(EXIT_FAILURE);
-    //     }
-    //     else if (!strcmp(status, "ERR\n")) {
-    //         std::cout << "Upload: UPL request is not correctly formulated" << std::endl;
-    //         // close(sfd);
-    //         // exit(EXIT_FAILURE);
-    //     }
-    //     else {
-    //         closeAllConnections();
-    //         exit(EXIT_FAILURE);
-    //     }
-    //     closeFSConnection();
-    // }
     if (!strcmp(command, "RDL ")) {
         nRead = read(sfd, status, 4);
+        std::cout << "status: " << status << std::endl; 
         if (!strcmp(status, "OK\n"))
             std::cout << "Delete: successful" << std::endl;
         else if (!strcmp(status, "EOF\n")) {
@@ -468,10 +433,7 @@ void processCommands() {
         do {
             memset(buffer, '\0', strlen(buffer));
             nRead = fread(buffer, 1, reading, file);
-            // if (nRead < reading)
-            //         nRead -= 1;
             intFilesize -= nRead;
-            // buffer[nRead] = '\0';
             std::cout << "a mandar para o fs: " << buffer << std::endl;
             sendToServer(FSClientTCP, buffer);
             std::cout << "ja enviou" << std::endl;
