@@ -76,7 +76,7 @@ void sendUDP(int socket, char *buf) {
     memset(buf, '\0', strlen(buf));
 }
 
-void sendTCP(int socket, char *buf) {
+int sendTCP(int socket, char *buf) {
     int n = write(socket, buf, strlen(buf));
     memset(buf, '\0', strlen(buf));
     if (n == -1) {
@@ -84,6 +84,7 @@ void sendTCP(int socket, char *buf) {
         closeAllConnections();
         exit(EXIT_FAILURE);
     }
+    return n;
 }
 
 void receiveUDP(int socket) {
@@ -194,6 +195,8 @@ void receiveUDP(int socket) {
             sendTCP(s, createString(args, 1));
         }
         else if (Fop[0] == 'R') {
+            const char *args[1] = {"RRT OK "};
+            sendTCP(s, createString(args, 1));
             memset(Fname, '\0', strlen(Fname));
             sscanf(buffer, "%s %s %s %s %s", command, UID, TID, Fop, Fname);
             const char *args1[5] = {"./fsUSERS/", UID, "/files/", Fname, "\0"};
@@ -206,20 +209,30 @@ void receiveUDP(int socket) {
                 fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
             }
             else {
-                int reading = 1024;
                 fseek(file, 0, SEEK_END);
                 int intFilesize = ftell(file);
                 rewind(file);
-                do {
-                    memset(buffer, '\0', strlen(buffer));
-                    nRead = fread(buffer, 1, reading, file);
-                    intFilesize -= nRead;
-                    sendTCP(s, buffer);
-                } while (intFilesize > 0);
-                fclose(file);
+                itoa(intFilesize, Fsize, 10);
+                const char *args1[2] = {Fsize, " "};
                 memset(buffer, '\0', strlen(buffer));
-                strcpy(buffer, "\n");
-                sendTCP(s, buffer);
+                strcpy(buffer, createString(args1, 2));
+                sendTCP(sfd, buffer);
+                int size = 0, n = 0;
+                char c[2];
+                do {
+                    memset(c, '\0', strlen(c));
+                    fread(c, 1, 1, file);
+                    n = write(s, c, 1);
+                    if (n < 0) {
+                        perror("error writing");
+                        break;
+                    }
+                    size += n;
+                } while (intFilesize > size);
+                fclose(file);
+                memset(c, '\0', strlen(c));
+                strcpy(c, "\n");
+                sendTCP(s, c);
             }
         }
         else if (Fop[0] == 'D') {
@@ -233,10 +246,6 @@ void receiveUDP(int socket) {
             sendTCP(s, createString(args, 1));
         }
         else if (Fop[0] == 'X') {
-            const char *args6[3] = {"rm -r ./asUSERS/", UID, "\0"};
-            memset(newdir, '\0', strlen(newdir));
-            strcpy(newdir, createString(args6, 3));
-            removeDir(newdir);
 
             /*-----------Verifica se a diretoria existe---------*/
             const char *args5[3] = {"rm -r ./fsUSERS/", UID, "\0"};
@@ -291,16 +300,16 @@ void receiveTCP(int socket) {
         if (!mkdir(filename, 0777))
             std::cout << "Created ./fsUSERS/" << UID << "/files/" << " directory" << std::endl;
         
-        /*---------Guarda socket no fd--------*/
+        /*------Guarda socket no fd--------*/
         memset(filename, '\0', strlen(filename));
-        const char *args[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
-        strcpy(filename, createString(args, 5));
+        const char *args7[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
+        strcpy(filename, createString(args7, 5));
         itoa(socket, auxBuffer, 128);
         file = fopen(filename, "w");
         if (file == NULL) {
             int errnum = errno;
             fprintf(stderr, "Value of errno: %d\n", errno);
-            fprintf(stderr, "Error opening file: %s\n", strerror( errnum ));
+            fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
         }
         fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         fclose(file);
@@ -398,14 +407,14 @@ void receiveTCP(int socket) {
             fprintf(stderr, "Value of errno: %d\n", errno);
             fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
         }
-        int reading = 1024;
         int intFilesize = atoi(Fsize);
+        int size = 0;
+        char c[1];
         do {
-            memset(buffer, '\0', strlen(buffer));
-            read(socket, buffer, reading);
-            nRead = fwrite(buffer, 1, strlen(buffer), file);
-            intFilesize -= nRead;
-        } while (intFilesize > 0);
+            size += read(socket, c, 1);
+            fwrite(c, 1, 1, file);
+            memset(c, '\0', strlen(c));
+        } while (nRead > 0 && size < intFilesize);
         fclose(file);
 
         /*-----------Responde para o as-------*/
@@ -421,18 +430,16 @@ void receiveTCP(int socket) {
             sendTCP(socket, createString(args, 1));
             return;
         }
-
-        /*-----------Verifica se a diretoria existe---------*/
+        /*-----------Verifica se as diretoriias existem---------*/
         const char *args5[3] = {"./fsUSERS/", UID, "\0"};
-        memset(newdir, '\0', strlen(newdir));
-        strcpy(newdir, createString(args5, 3));
-        DIR* dir = opendir(newdir);
-        if (!dir) {
-            const char *args[1] = {"RRT NOK\n"};
-            sendTCP(socket, createString(args, 1));
-            return;
-        }
-        closedir(dir);
+        strcpy(filename, createString(args5, 3));
+        if (!mkdir(filename, 0777))
+            std::cout << "Created ./fsUSERS/" << UID << " directory" << std::endl;
+        memset(filename, '\0', strlen(filename));
+        const char *args6[4] = {"./fsUSERS/", UID, "/files/", "\0"};
+        strcpy(filename, createString(args6, 4));
+        if (!mkdir(filename, 0777))
+            std::cout << "Created ./fsUSERS/" << UID << "/files/" << " directory" << std::endl;
 
         /*-----------Verifica se file existe-------*/
         const char *args10[5] = {"./fsUSERS/", UID, "/files/", Fname, "\0"};
@@ -460,12 +467,12 @@ void receiveTCP(int socket) {
         }
         fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         fclose(file);
-
         /*--------Envia mensagem ao AS--------*/
         const char *args1[5] = {"VLD ", UID, " ", TID, "\n"};
         sendUDP(clientUDP, createString(args1, 5));
     }
     if (!strcmp(command, "DEL ")) {
+        
         memset(buffer, '\0', strlen(buffer));
         read(socket, buffer, BUFSIZE);
         sscanf(buffer, "%s %s %s", UID, TID, Fname);
@@ -474,11 +481,22 @@ void receiveTCP(int socket) {
             sendTCP(socket, createString(args, 1));
             return;
         }
+        /*-----------Verifica se as diretoriias existem---------*/
+        const char *args5[3] = {"./fsUSERS/", UID, "\0"};
+        strcpy(filename, createString(args5, 3));
+        if (!mkdir(filename, 0777))
+            std::cout << "Created ./fsUSERS/" << UID << " directory" << std::endl;
+        memset(filename, '\0', strlen(filename));
+        const char *args6[4] = {"./fsUSERS/", UID, "/files/", "\0"};
+        strcpy(filename, createString(args6, 4));
+        if (!mkdir(filename, 0777))
+            std::cout << "Created ./fsUSERS/" << UID << "/files/" << " directory" << std::endl;
+
 
         /*-----------Verifica se a diretoria existe---------*/
-        const char *args5[3] = {"./fsUSERS/", UID, "\0"};
+        const char *args8[3] = {"./fsUSERS/", UID, "\0"};
         memset(newdir, '\0', strlen(newdir));
-        strcpy(newdir, createString(args5, 3));
+        strcpy(newdir, createString(args8, 3));
         DIR* dir = opendir(newdir);
         if (!dir) {
             const char *args[1] = {"RDL NOK\n"};

@@ -51,8 +51,8 @@ void closeAllConnections() {
     freeaddrinfo(resFSClient);
 }
 
-int sendToServer(int sfd, char *buf) {
-    int n = write(sfd, buf, strlen(buf));
+int sendToServer(int sfd, char *buf, int i) {
+    int n = write(sfd, buf, i);
     if (n == -1) {
         fprintf(stderr, "Failed write to server\n");
         closeAllConnections();
@@ -166,7 +166,6 @@ void receiveFromServer(int sfd) {
                 strcpy(aux, "\0");
                 nRead = read(sfd, aux, 1);
                 if (nRead <= 0)
-                    // nSpaces = 0;
                     break;
                 if (aux[0] == '\n')
                     nSpaces = 0;
@@ -194,26 +193,25 @@ void receiveFromServer(int sfd) {
         status[nRead] = '\0';
         if (!strcmp(status, "OK ")) {
             /*------Reads filesize-----*/
-            memset(filesize, '\0', strlen(filesize));
-            char c;
+            memset(filesize, '\0', strlen(filesize) * sizeof(char));
+            char b[1];
             do {
-                read(sfd, &c, 1);
-                strncat(filesize, &c, 1);
-            } while (isdigit(c));
-
-            /*------Reads data------*/
-            int reading = 1024;
-            int intFilesize = atoi(filesize);;
+                read(sfd, b, sizeof(char));
+                b[1] = '\0';
+                strcat(filesize, b);
+            } while (strcmp(b, " "));
+            strcat(filesize, "\0");
+            int intFilesize = atoi(filesize);
+            int size = 0;
             FILE *file = fopen(Fname, "wb");
+            char c[1];
             do {
-                memset(buffer, '\0', strlen(buffer));
-                nRead = read(sfd, buffer, reading);
-                intFilesize -= nRead;
-                if (nRead < reading)
-                    nRead -= 1;
-                fwrite(buffer, 1, nRead, file);
-            } while (intFilesize > 0);
+                memset(c, '\0', strlen(c));
+                size += read(sfd, c, 1);
+                fwrite(buffer, 1, 1, file);
+            } while (intFilesize > size);
             fclose(file);
+            read(sfd, c, 1);
             std::cout << "Retrieve: successful" << std::endl;
         }
         else {
@@ -222,7 +220,6 @@ void receiveFromServer(int sfd) {
             if (!nRead) {
                 std::cout << "Retrieve: cloud not read" << std::endl;
                 closeAllConnections();
-                exit(EXIT_FAILURE);
             }
             strcat(status, aux);
             if (!strcmp(status, "EOF\n"))
@@ -230,17 +227,14 @@ void receiveFromServer(int sfd) {
             else if (!strcmp(status, "NOK\n")) {
                 std::cout << "Retrieve: no content available in the FS for respective user" << std::endl;
                 closeAllConnections();
-                exit(EXIT_FAILURE);
             }
             else if (!strcmp(status, "INV\n")) {
                 std::cout << "Retrieve: AS validation error of the provided TID" << std::endl;
                 closeAllConnections();
-                exit(EXIT_FAILURE);
             }
             else if (!strcmp(status, "ERR\n")) {
                 std::cout << "Retrieve: request is not correctly formulated" << std::endl;
                 closeAllConnections();
-                exit(EXIT_FAILURE);
             }
         }
         closeFSConnection();
@@ -252,28 +246,21 @@ void receiveFromServer(int sfd) {
             std::cout << "Upload: successful" << std::endl;
         else if (!strcmp(status, "NOK\n")) {
             std::cout << "Upload: not successful" << std::endl;
-            // close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "DUP\n")) {
             std::cout << "Upload: file already existed" << std::endl;
-            // close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "FULL\n")) {
             std::cout << "Upload: 15 files were previously uploaded by this User" << std::endl;
-            // close(sfd);
-            // exit(EXIT_FAILURE);
+       
         }
         else if (!strcmp(status, "INV\n")) {
             std::cout << "Upload: AS validation error of the provided TID" << std::endl;
-            // close(sfd);
-            // exit(EXIT_FAILURE);
+         
         }
         else if (!strcmp(status, "ERR\n")) {
             std::cout << "Upload: UPL request is not correctly formulated" << std::endl;
-            // close(sfd);
-            // exit(EXIT_FAILURE);
+       
         }
         else {
             closeAllConnections();
@@ -288,22 +275,22 @@ void receiveFromServer(int sfd) {
         else if (!strcmp(status, "EOF\n")) {
             std::cout << "Delete: file not available" << std::endl;
             close(sfd);
-            exit(EXIT_FAILURE);
+
         }
         else if (!strcmp(status, "NOK\n")) {
             std::cout << "Delete: UID does not exist" << std::endl;
             close(sfd);
-            exit(EXIT_FAILURE);
+
         }
         else if (!strcmp(status, "INV\n")) {
             std::cout << "Delete: AS validation error of the provided TID" << std::endl;
             close(sfd);
-            exit(EXIT_FAILURE);
+
         }
         else if (!strcmp(status, "ERR\n")) {
             std::cout << "Delete: DEL request is not correctly formulated" << std::endl;
             close(sfd);
-            exit(EXIT_FAILURE);
+
         }
         else {
             close(sfd);
@@ -318,17 +305,14 @@ void receiveFromServer(int sfd) {
         else if (!strcmp(status, "NOK\n")) {
             std::cout << "Remove: UID does not exist" << std::endl;
             close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "INV\n")) {
             std::cout << "Remove: AS validation error of the provided TID" << std::endl;
             close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else if (!strcmp(status, "ERR\n")) {
             std::cout << "Remove: REM request is not correctly formulated" << std::endl;
             close(sfd);
-            // exit(EXIT_FAILURE);
         }
         else {
             close(sfd);
@@ -376,7 +360,9 @@ void processCommands() {
         if (!checkUID(UID) || !checkPass(pass))
             exit(EXIT_FAILURE);
         const char *args[5] = {"LOG ", UID, " ", pass, "\n"};
-        sendToServer(ASClientTCP, createString(args, 5));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 5));
+        sendToServer(ASClientTCP, buffer, strlen(buffer));
     }
     else if (!strcmp(command, "req")) {
         sscanf(buffer, "%s %s", command, Fop);
@@ -385,29 +371,39 @@ void processCommands() {
         if (Fop[0] == 'R' || Fop[0] == 'U' || Fop[0] == 'D') {
             sscanf(buffer, "%s %s %s", command, Fop, Fname);
             const char *args[9] = {"REQ ", UID, " ", RID, " ", Fop, " ", Fname, "\n"};
-            sendToServer(ASClientTCP, createString(args, 9));
+            memset(buffer, '\0', strlen(buffer));
+            strcpy(buffer, createString(args, 9));
+            sendToServer(ASClientTCP, buffer, strlen(buffer));
         }
         else if (!strcmp(Fop, "L") || !strcmp(Fop, "X")) {
             const char *args[7] = {"REQ ", UID, " ", RID, " ", Fop, "\n"};
-            sendToServer(ASClientTCP, createString(args, 7));
+            memset(buffer, '\0', strlen(buffer));
+            strcpy(buffer, createString(args, 7));
+            sendToServer(ASClientTCP, buffer, strlen(buffer));
         }
     }
     else if (!strcmp(command, "val")) {
         sscanf(buffer, "%s %s", command, VC);
         const char *args[7] = {"AUT ", UID, " ", RID, " ", VC, "\n"};
-        sendToServer(ASClientTCP, createString(args, 7));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 7));
+        sendToServer(ASClientTCP, buffer, strlen(buffer));
     }
     else if (!strcmp(command, "list") || !strcmp(command, "l")) {
         openFSConnection();
         const char *args[5] = {"LST ", UID, " ", TID, "\n"};
-        sendToServer(FSClientTCP, createString(args, 5));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 5));
+        sendToServer(FSClientTCP, buffer, strlen(buffer));
     }
     else if (!strcmp(command, "retrieve") || !strcmp(command, "r")) {
         openFSConnection();
         sscanf(buffer, "%s %s", command, filename);
         strcpy(Fname, filename);
         const char *args[7] = {"RTV ", UID, " ", TID, " ", Fname, "\n"};
-        sendToServer(FSClientTCP, createString(args, 7));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 7));
+        sendToServer(FSClientTCP, buffer, strlen(buffer));
     }
     else if (!strcmp(command, "upload") || !strcmp(command, "u")) {
         openFSConnection();
@@ -425,31 +421,33 @@ void processCommands() {
         itoa(intFilesize, Fsize, 10);
 
         const char *args[9] = {"UPL ", UID, " ", TID, " ", Fname, " ", Fsize, " "};
-        sendToServer(FSClientTCP, createString(args, 9));
-        int reading = 1024;
-        int n;
-        do {
-            memset(buffer, '\0', strlen(buffer));
-            nRead = fread(buffer, 1, reading, file);
-            n = sendToServer(FSClientTCP, buffer);
-            intFilesize -= n;
-        } while (intFilesize > 0);
-        fclose(file);
         memset(buffer, '\0', strlen(buffer));
-        strcpy(buffer, "\n");
-        sendToServer(FSClientTCP, buffer);
+        strcpy(buffer, createString(args, 9));
+        sendToServer(FSClientTCP, buffer, strlen(buffer));
+        int n = 0;
+        do {
+            char c[1];
+            memset(c, '\0', strlen(c));
+            fread(c, 1, 1, file);
+            n += sendToServer(FSClientTCP, c, 1);
+        } while (intFilesize > n);
+        fclose(file);
     }
     else if (!strcmp(command, "delete") || !strcmp(command, "d")) {
         openFSConnection();
         sscanf(buffer, "%s %s", command, filename);
         strcpy(Fname, filename);
         const char *args[7] = {"DEL ", UID, " ", TID, " ", Fname, "\n"};
-        sendToServer(FSClientTCP, createString(args, 7));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 7));
+        sendToServer(FSClientTCP, buffer, strlen(buffer));
     }
     else if (!strcmp(command, "remove") || !strcmp(command, "x")) {
         openFSConnection();
         const char *args[5] = {"REM ", UID, " ", TID, "\n"};
-        sendToServer(FSClientTCP, createString(args, 5));
+        memset(buffer, '\0', strlen(buffer));
+        strcpy(buffer, createString(args, 5));
+        sendToServer(FSClientTCP, buffer, strlen(buffer));
     }
 }
 
@@ -474,7 +472,6 @@ int main(int argc, char **argv) {
     }
     
     while (1) {
-        // FD_ZERO(&readfds);
         FD_SET(afd, &readfds);
         FD_SET(ASClientTCP, &readfds);
         maxfd = max(ASClientTCP, FSClientTCP);

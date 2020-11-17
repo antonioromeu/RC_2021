@@ -46,9 +46,10 @@ void parseArgs(int argc, char *argv[]) {
         printf("Usage: %s host port msg...", argv[0]);
         exit(EXIT_FAILURE);
     }
-    for (int i = 1; i < argc; i += 2)
-        if (!strcmp(argv[i], "-p"))
+    for (int i = 1; i < argc; i += 2) {
+        if (!strcmp(argv[i + 1], "-p"))
             strcpy(ASport, argv[i]);
+    }
 }
 
 void closeAllConnections() {
@@ -101,7 +102,7 @@ void setupClientUDP(char *PDIP, char *PDport) {
         closeAllConnections();
         exit(EXIT_FAILURE);
     }
-    FD_SET(clientUDP, &readfds);
+    FD_SET(clientUDP, &readfds); 
     maxFD = max(maxFD, clientUDP);
 }
 
@@ -230,6 +231,10 @@ void receiveServerUDP(int socket) {
             sendUDP(socket, createString(args1, 9));
         }
         else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
+            const char *args6[3] = {"rm -r ./asUSERS/", UID, "\0"};
+            memset(newdir, '\0', strlen(newdir));
+            strcpy(newdir, createString(args6, 3));
+            removeDir(newdir);
             const char *args1[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
             sendUDP(socket, createString(args1, 7));
         }
@@ -279,8 +284,7 @@ void receiveTCP(int socket) {
         char aux[128];
         memset(aux, '\0', strlen(aux));
         memset(auxBuffer, '\0', strlen(auxBuffer));
-
-        setupClientUDP(PDIP, PDport);
+        // setupClientUDP(PDIP, PDport);
         srand(time(0));
         sprintf(VC, "%d", rand() % 9000 + 1000);
         sscanf(buffer, "%s %s %s %s", command, UID, RID, Fop);
