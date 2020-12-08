@@ -43,7 +43,7 @@ void parseArgs(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    strcpy(PDIP, argv[1]);
+    // strcpy(PDIP, argv[1]);
     for (int i = 2; i < argc; i += 2) {
         if (!strcmp(argv[i], "-q"))
             strcpy(FSport, argv[i + 1]);

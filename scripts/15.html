@@ -1,0 +1,538 @@
+<html><script>try {
+                        Object.defineProperty(screen, "availTop", { value: 0 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(screen, "availLeft", { value: 0 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(screen, "availWidth", { value: 1920 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(screen, "availHeight", { value: 1080 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(screen, "colorDepth", { value: 24 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(screen, "pixelDepth", { value: 24 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(navigator, "hardwareConcurrency", { value: 8 });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(navigator, "appVersion", { value: "5.0 (X11)" });
+                    } catch (e) {}
+                    try {
+                        Object.defineProperty(navigator, "doNotTrack", { value: "unspecified" });
+                    } catch (e) {}
+                    
+            try {
+                window.screenY = 0
+            } catch (e) { }
+        
+            try {
+                window.screenTop = 0
+            } catch (e) { }
+        
+            try {
+                window.top.window.outerHeight = window.screen.height
+            } catch (e) { }
+        
+            try {
+                window.screenX = 948
+            } catch (e) { }
+        
+            try {
+                window.screenLeft = 948
+            } catch (e) { }
+        
+            try {
+                window.top.window.outerWidth = 960
+            } catch (e) { }
+        </script><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><title>Test report</title></head><body><center><font size="10" color="blue"> --------- TEST RESULTS --------- </font></center><br><br><center><font size="5" color="blue"> SCRIPT: 15 (request from 85.246.37.192) </font></center><br><br>Sat, 14 Nov 2020 21:49:59 GMT<br><center><font size="5" color="blue"> ============ PD REPORT ============ </font></center><br><br><br>Sat, 14 Nov 2020 21:50:01 GMT &lt;----&lt; received from AS: VLC 10150 9165 U jpg_44.jpg
+<br>
+<br>Sat, 14 Nov 2020 21:50:01 GMT  &gt;----&gt; sent to AS: RVC 10150 OK
+<br>
+<br>Sat, 14 Nov 2020 21:50:03 GMT &lt;----&lt; received from AS: VLC 10150 5527 L
+<br>
+<br>Sat, 14 Nov 2020 21:50:03 GMT  &gt;----&gt; sent to AS: RVC 10150 OK
+<br>
+<br>PD server started at port 59000
+<br>---------------------------
+<br>
+<br>COMMAND: reg 10150 azazazaz
+<br>Sat, 14 Nov 2020 21:50:00 GMT ------- Register success
+<br>---------------------------
+<br>
+<br>COMMAND: uexit
+<br>Sat, 14 Nov 2020 21:50:00 GMT ------- Waiting for User termination
+<br>Sat, 14 Nov 2020 21:50:25 GMT ------- User now off
+<br>Error receiving UDP message
+<br>Error receiving UDP message
+<br>Sat, 14 Nov 2020 21:50:36 GMT ------- Communication error
+<br><br><br><br><br><center><font size="5" color="blue"> ============ USER REPORT ============ </font></center><br><br><br>Waiting for PD ready
+<br>PD now ready
+<br>User started Sat, 14 Nov 2020 21:50:01 GMT
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:01 GMT
+<br>
+<br>COMMAND: login 10150 azazazaz
+<br>Login successful
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:01 GMT
+<br>
+<br>COMMAND: req U jpg_44.jpg
+<br>Successful request - check VC on PD
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:01 GMT
+<br>
+<br>COMMAND: rval
+<br>VC= 9165
+<br>Authentication successful. TID for requested operation is: 2703
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:02 GMT
+<br>
+<br>COMMAND: upload jpg_44.jpg
+<br>File uploaded
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:03 GMT
+<br>
+<br>COMMAND: req L
+<br>Successful request - check VC on PD
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:03 GMT
+<br>
+<br>COMMAND: rval
+<br>VC= 5527
+<br>Authentication successful. TID for requested operation is: 8249
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:04 GMT
+<br>
+<br>COMMAND: list
+<br>Communication error
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U landscape.jpg
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload landscape.jpg
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U Moon.jpg
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload Moon.jpg
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U one_byte_file.txt
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload one_byte_file.txt
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc1164.txt.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc1164.txt.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc3778.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc3778.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc7995.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc7995.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc8519.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc8519.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc965.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc965.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc969.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc969.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc975.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc975.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U rfc990.pdf
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload rfc990.pdf
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U three_bytes_file.txt
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload three_bytes_file.txt
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U twenty4_24bytes_file.txt
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload twenty4_24bytes_file.txt
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req U unnamed.jpg
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: upload unnamed.jpg
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: req L
+<br>Error reading from socket
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: rval
+<br>There is no previous request
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: list
+<br>No previous validation
+<br>---------------------------
+<br>Sat, 14 Nov 2020 21:50:24 GMT
+<br>
+<br>COMMAND: exit
+<br><br><br></body></html>

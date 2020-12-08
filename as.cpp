@@ -112,6 +112,7 @@ void receiveClientUDP(int socket) {
     memset(newdir, '\0', strlen(newdir));
     int n = recvfrom(socket, buffer, BUFSIZE, 0, (struct sockaddr*) &addrClientUDP, &addrlenClientUDP);
     buffer[n] = '\0';
+    printf("%s", buffer);
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "RVC")) {
         sscanf(buffer, "%s %s %s", command, UID, status);
@@ -230,11 +231,18 @@ void receiveServerUDP(int socket) {
             const char *args1[9] = {"CNF ", UID, " ", TID, " ", Fop, " ", Fname, "\n"};
             sendUDP(socket, createString(args1, 9));
         }
-        else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
+        // else if (!strcmp(Fop, "X") || !strcmp(Fop, "L")) {
+        else if (!strcmp(Fop, "X")) {
             const char *args6[3] = {"rm -r ./asUSERS/", UID, "\0"};
             memset(newdir, '\0', strlen(newdir));
             strcpy(newdir, createString(args6, 3));
+            printf("antes1");
             removeDir(newdir);
+            printf("depois remove1");
+            const char *args1[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
+            sendUDP(socket, createString(args1, 7));
+        }
+        else if (!strcmp(Fop, "L")) {
             const char *args1[7] = {"CNF ", UID, " ", TID, " ", Fop, "\n"};
             sendUDP(socket, createString(args1, 7));
         }
@@ -250,14 +258,17 @@ void receiveServerUDP(int socket) {
 }
 
 void receiveTCP(int socket) {
-    memset(buffer, '\0', strlen(buffer));
-    memset(command, '\0', strlen(command));
+    memset(buffer, '\0', BUFSIZE);
+    memset(command, '\0', BUFSIZE);
     int n = read(socket, buffer, BUFSIZE);
+    printf("%s 111", buffer);
     buffer[n] = '\0';
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "LOG")) {
         sscanf(buffer, "%s %s %s", command, recvUID, recvPass);
         memset(status, '\0', strlen(status));
+        printf("%s 1", buffer);
+        printf("uid: %s, recvuid: %s, pass: %s, recvpass: %s", UID, recvUID, pass, recvPass);
         if (!strcmp(UID, recvUID) && !strcmp(pass, recvPass)) {
             const char *args[5] = {"./asUSERS/", UID, "/", UID, "_login.txt\0"};
             strcpy(loginFile, createString(args, 5));

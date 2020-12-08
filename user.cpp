@@ -52,6 +52,7 @@ void closeAllConnections() {
 }
 
 int sendToServer(int sfd, char *buf, int i) {
+    printf("%s", buf);
     int n = write(sfd, buf, i);
     if (n == -1) {
         fprintf(stderr, "Failed write to server\n");
@@ -75,6 +76,7 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     command[nRead] = '\0';
+    printf("%s", command);
     if (!strcmp(command, "RLO ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
