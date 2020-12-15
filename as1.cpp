@@ -267,7 +267,6 @@ void receiveTCP(int socket) {
         const char *args2[5] = {"./asUSERS/", recvUID, "/", recvUID, "_pass.txt\0"};
         strcpy(passFile, createString(args2, 5));
         FILE *file = fopen(passFile, "r");
-        
         n = fread(pass, 1, 128, file);
         fclose(file);
         if (!strcmp(pass, recvPass)) {
