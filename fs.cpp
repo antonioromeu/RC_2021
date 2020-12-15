@@ -97,6 +97,7 @@ void receiveUDP(int socket) {
     buffer[n] = '\0';
     sscanf(buffer, "%s ", command);
     if (!strcmp(command, "CNF")) {
+        printf("a receber cnf");
         sscanf(buffer, "%s %s %s %s", command, UID, TID, Fop);
         const char *args[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
         strcpy(filename, createString(args, 5));
@@ -141,6 +142,7 @@ void receiveUDP(int socket) {
             }
         }
         else if (!strcmp(Fop, "L")) {
+            printf("a entrer no L");
             memset(auxBuffer, '\0', strlen(auxBuffer));
             memset(newdir, '\0', strlen(newdir));
             const char *args1[4] = {"./fsUSERS/", UID, "/files/", "\0"};
@@ -150,6 +152,8 @@ void receiveUDP(int socket) {
                 perror("Could not open dir");
             char N[128];
             itoa(countFiles(newdir), N, 128);
+            printf("%s", N);
+            fflush(stdout);
             if (!strcmp(N, "0")) {
                 const char *args5[1] = {"RLS EOF\n"};
                 sendTCP(s, createString(args5, 1));
@@ -302,7 +306,7 @@ void receiveTCP(int socket) {
         
         /*------Guarda socket no fd--------*/
         memset(filename, '\0', strlen(filename));
-        const char *args7[5] = {"./fsUSERS/", UID, "/files/", UID, "_fd.txt\0"};
+        const char *args7[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
         strcpy(filename, createString(args7, 5));
         itoa(socket, auxBuffer, 128);
         file = fopen(filename, "w");
