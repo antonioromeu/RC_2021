@@ -52,7 +52,6 @@ void closeAllConnections() {
 }
 
 int sendToServer(int sfd, char *buf, int i) {
-    printf("%s", buf);
     int n = write(sfd, buf, i);
     if (n == -1) {
         fprintf(stderr, "Failed write to server\n");
@@ -76,7 +75,6 @@ void receiveFromServer(int sfd) {
         exit(EXIT_FAILURE);
     }
     command[nRead] = '\0';
-    printf("%s", command);
     if (!strcmp(command, "RLO ")) {
         nRead = read(sfd, status, 4);
         if (!strcmp(status, "OK\n"))
@@ -175,7 +173,7 @@ void receiveFromServer(int sfd) {
                     nSpaces--;
                     if (!nSpaces)
                         break;
-                }\
+                }
                 if (isalnum(aux[0]) || aux[0] == '.' || aux[0] == '-' || aux[0] == '_' || aux[0] == ' ') {
                     aux[1] = '\0';
                     strcat(filename, aux);
@@ -210,7 +208,7 @@ void receiveFromServer(int sfd) {
             do {
                 memset(c, '\0', strlen(c));
                 size += read(sfd, c, 1);
-                fwrite(buffer, 1, 1, file);
+                fwrite(c, 1, 1, file);
             } while (intFilesize > size);
             fclose(file);
             read(sfd, c, 1);
@@ -427,11 +425,11 @@ void processCommands() {
         strcpy(buffer, createString(args, 9));
         sendToServer(FSClientTCP, buffer, strlen(buffer));
         int n = 0;
+        char c[1];
         do {
-            char c[1];
             memset(c, '\0', strlen(c));
             fread(c, 1, 1, file);
-            n += sendToServer(FSClientTCP, c, 1);
+            n += write(FSClientTCP, c, 1);
         } while (intFilesize > n);
         fclose(file);
     }
