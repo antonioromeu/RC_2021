@@ -302,15 +302,15 @@ void receiveTCP(int socket) {
         
         /*------Guarda socket no fd--------*/
         memset(filename, '\0', strlen(filename));
-        const char *args7[5] = {"./fsUSERS/", UID, "/", UID, "_fd.txt\0"};
+        const char *args7[5] = {"./fsUSERS/", UID, "/files/", UID, "_fd.txt\0"};
         strcpy(filename, createString(args7, 5));
         itoa(socket, auxBuffer, 128);
         file = fopen(filename, "w");
-        if (file == NULL) {
-            int errnum = errno;
-            fprintf(stderr, "Value of errno: %d\n", errno);
-            fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
-        }
+        // if (file == NULL) {
+        //     int errnum = errno;
+        //     fprintf(stderr, "Value of errno: %d\n", errno);
+        //     fprintf(stderr, "Error opening file: %s\n", strerror(errnum));
+        // }
         fwrite(auxBuffer, 1, strlen(auxBuffer), file);
         fclose(file);
 

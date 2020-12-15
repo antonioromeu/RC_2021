@@ -196,7 +196,7 @@ void receiveFromServer(int sfd) {
         if (!strcmp(status, "OK ")) {
             /*------Reads filesize-----*/
             memset(filesize, '\0', strlen(filesize) * sizeof(char));
-            char b[1];
+            char b[2];
             do {
                 read(sfd, b, sizeof(char));
                 b[1] = '\0';
